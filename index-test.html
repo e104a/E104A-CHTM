@@ -1601,13 +1601,33 @@ function callServer(functionName, args, success, failure) {
   params.set('args', JSON.stringify(args || [])); params.set('callback', callbackName);
   const script = document.createElement('script');
   script.src = API_URL + '?' + params.toString();
+  let settled = false;
+  const cleanup = function() {
+    if (settled) return;
+    settled = true;
+    clearTimeout(timeoutId);
+    delete window[callbackName];
+    script.remove();
+  };
+  const timeoutId = setTimeout(function() {
+    if (settled) return;
+    const err = new Error('Máy chủ phản hồi quá lâu. Vui lòng thử lại.');
+    cleanup();
+    if (typeof failure === 'function') failure(err); else alert(err.message);
+  }, 20000);
   window[callbackName] = function(response) {
+    if (settled) return;
     try {
       if (response && response.success) { if (typeof success === 'function') success(response.data); }
       else { const err = new Error(response && response.error ? response.error : 'API error'); if (typeof failure === 'function') failure(err); else alert(err.message); }
-    } finally { delete window[callbackName]; script.remove(); }
+    } finally { cleanup(); }
   };
-  script.onerror = function() { const err = new Error('Không kết nối được máy chủ Apps Script.'); if (typeof failure === 'function') failure(err); else alert(err.message); delete window[callbackName]; script.remove(); };
+  script.onerror = function() {
+    if (settled) return;
+    const err = new Error('Không kết nối được máy chủ Apps Script.');
+    cleanup();
+    if (typeof failure === 'function') failure(err); else alert(err.message);
+  };
   document.head.appendChild(script);
 }
 
