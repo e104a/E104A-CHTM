@@ -597,7 +597,7 @@ body {
   border:0 !important; border-radius:0 !important; background:transparent !important;
   box-shadow:none !important; font-size:0 !important;
 }
-.banner-emblem .national-emblem { display:block !important; width:100% !important; height:100% !important; filter:drop-shadow(0 3px 4px #251300) !important; }
+.banner-emblem .national-emblem { display:block !important; width:100% !important; height:100% !important; object-fit:contain !important; filter:drop-shadow(0 3px 4px #251300) !important; }
 .banner-copy { position:relative !important; z-index:2 !important; max-width:96% !important; }
 .banner-copy h1 {
   margin:0 0 11px !important; color:#ffdf54 !important;
@@ -1157,31 +1157,7 @@ body {
 <header class="header military-header">
   <div class="military-banner">
     <div class="banner-emblem" aria-label="Quốc huy Việt Nam">
-      <svg class="national-emblem" viewBox="0 0 160 170" role="img" aria-label="Hình quốc huy Việt Nam cách điệu">
-        <defs>
-          <radialGradient id="shieldRed" cx="38%" cy="28%"><stop offset="0" stop-color="#f22a24"/><stop offset="1" stop-color="#a90008"/></radialGradient>
-          <linearGradient id="emblemGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff4a8"/><stop offset=".48" stop-color="#f4c43e"/><stop offset="1" stop-color="#a96b0b"/></linearGradient>
-        </defs>
-        <!-- Hai nhánh lúa ôm tròn -->
-        <g fill="none" stroke="url(#emblemGold)" stroke-width="4" stroke-linecap="round">
-          <path d="M47 139C15 121 8 83 21 45 28 25 40 14 52 8"/><path d="M113 139c32-18 39-56 26-94-7-20-19-31-31-37"/>
-          <path d="M24 45l-14-7m14 20L8 55m15 22L7 75m20 20L13 103m24 18-14 13m103-89 14-7m-14 20 16-5m-15 22 16-2m-20 20 14 8m-24 12 13 13"/>
-        </g>
-        <g fill="url(#emblemGold)" stroke="#8c5b0c" stroke-width=".7">
-          <ellipse cx="14" cy="37" rx="4" ry="9" transform="rotate(-55 14 37)"/><ellipse cx="10" cy="57" rx="4" ry="9" transform="rotate(-78 10 57)"/><ellipse cx="11" cy="78" rx="4" ry="9" transform="rotate(-98 11 78)"/><ellipse cx="18" cy="99" rx="4" ry="9" transform="rotate(-125 18 99)"/><ellipse cx="29" cy="119" rx="4" ry="9" transform="rotate(-145 29 119)"/>
-          <ellipse cx="146" cy="37" rx="4" ry="9" transform="rotate(55 146 37)"/><ellipse cx="150" cy="57" rx="4" ry="9" transform="rotate(78 150 57)"/><ellipse cx="149" cy="78" rx="4" ry="9" transform="rotate(98 149 78)"/><ellipse cx="142" cy="99" rx="4" ry="9" transform="rotate(125 142 99)"/><ellipse cx="131" cy="119" rx="4" ry="9" transform="rotate(145 131 119)"/>
-        </g>
-        <!-- Quốc huy dạng khiên tròn đỏ, sao vàng -->
-        <circle cx="80" cy="63" r="48" fill="url(#emblemGold)" stroke="#80520b" stroke-width="2"/>
-        <circle cx="80" cy="63" r="42" fill="url(#shieldRed)" stroke="#ffe78a" stroke-width="2.5"/>
-        <path d="M80 27l9 23h24L94 65l7 24-21-14-21 14 7-24-19-15h24z" fill="#ffdf32" stroke="#fff1a0" stroke-width="1.5"/>
-        <!-- Bánh xe răng cưa và nửa bánh răng ở chân khiên -->
-        <path d="M55 109l5-7 7 3 5-5-1-8h18l-1 8 5 5 7-3 5 7-6 6 1 8-8 5-7-5h-9l-7 5-8-5 1-8z" fill="url(#emblemGold)" stroke="#85560d" stroke-width="2"/>
-        <circle cx="80" cy="116" r="10" fill="#b30b12" stroke="#ffe18a" stroke-width="2"/><circle cx="80" cy="116" r="4" fill="url(#emblemGold)"/>
-        <!-- Dải băng đỏ phía dưới -->
-        <path d="M22 139l22 2 36 8 36-8 22-2-9 18-49 9-49-9z" fill="#b50912" stroke="url(#emblemGold)" stroke-width="2.5"/>
-        <path d="M40 145q40 14 80 0" fill="none" stroke="#ffe68a" stroke-width="2"/>
-      </svg>
+      <img class="national-emblem" src="./quan-hieu-e104a.png" alt="Quân hiệu" loading="eager">
     </div>
     <div class="banner-copy">
       <h1>HỆ THỐNG ÔN TẬP VÀ THI TRẮC NGHIỆM</h1>
