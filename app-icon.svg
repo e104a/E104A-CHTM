@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<rect width="512" height="512" rx="112" fill="#10365f"/>
+<circle cx="256" cy="256" r="184" fill="#174a83" stroke="#e5bd64" stroke-width="18"/>
+<path d="M132 176c55-25 99-18 124 5v170c-35-28-79-30-124-8z" fill="#f8fafc" stroke="#e5bd64" stroke-width="10" stroke-linejoin="round"/>
+<path d="M380 176c-55-25-99-18-124 5v170c35-28 79-30 124-8z" fill="#f8fafc" stroke="#e5bd64" stroke-width="10" stroke-linejoin="round"/>
+<path d="M256 181v170" stroke="#e5bd64" stroke-width="12"/>
+<text x="256" y="116" font-family="Arial,sans-serif" font-size="48" font-weight="bold" text-anchor="middle" fill="#fff">E104A</text>
+</svg>
