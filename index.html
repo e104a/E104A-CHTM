@@ -5,505 +5,97 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#142c22">
 <title>E104A - Ôn thi trắc nghiệm</title>
-
 <style>
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-:root {
-  --green: #17392c;
-  --green2: #244b38;
-  --gold: #e5bd64;
-  --cream: #f4f2e9;
-  --white: #ffffff;
-  --text: #1c2b24;
-}
-
-body {
-  font-family: Arial, Helvetica, sans-serif;
-  background: var(--cream);
-  color: var(--text);
-}
-
-header {
-  background: linear-gradient(135deg, #10251c, #244b38);
-  color: white;
-  padding: 18px 7%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 15px;
-  border-bottom: 3px solid var(--gold);
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.logo {
-  width: 58px;
-  height: 58px;
-  border: 2px solid var(--gold);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  color: var(--gold);
-  font-size: 19px;
-  background: #10251c;
-}
-
-.brand h1 {
-  font-size: 22px;
-  letter-spacing: 1px;
-}
-
-.brand p {
-  font-size: 12px;
-  color: #d9dfd9;
-  margin-top: 5px;
-}
-
-.header-button {
-  border: 1px solid var(--gold);
-  padding: 11px 20px;
-  border-radius: 30px;
-  background: transparent;
-  color: var(--gold);
-  font-weight: bold;
-  cursor: pointer;
-}
-
-.header-button:hover {
-  background: var(--gold);
-  color: var(--green);
-}
-
-.hero {
-  min-height: 450px;
-  background:
-    linear-gradient(90deg, rgba(10,25,18,.96), rgba(19,46,32,.86)),
-    radial-gradient(circle at right, #53745c, #142c22);
-  display: flex;
-  align-items: center;
-  padding: 65px 8%;
-  color: white;
-  position: relative;
-  overflow: hidden;
-}
-
-.hero::after {
-  content: "E104A";
-  position: absolute;
-  right: 4%;
-  bottom: -50px;
-  font-size: clamp(120px, 23vw, 320px);
-  font-weight: 900;
-  color: rgba(255,255,255,.035);
-  pointer-events: none;
-}
-
-.hero-content {
-  max-width: 750px;
-  position: relative;
-  z-index: 1;
-}
-
-.tag {
-  display: inline-block;
-  border: 1px solid var(--gold);
-  color: var(--gold);
-  padding: 8px 14px;
-  border-radius: 30px;
-  font-size: 12px;
-  letter-spacing: 2px;
-  margin-bottom: 22px;
-}
-
-.hero h2 {
-  font-size: clamp(30px, 5vw, 56px);
-  line-height: 1.2;
-  margin-bottom: 20px;
-}
-
-.hero h2 span {
-  color: var(--gold);
-}
-
-.hero p {
-  color: #d5ddd6;
-  font-size: 16px;
-  line-height: 1.8;
-  max-width: 620px;
-}
-
-.hero-buttons {
-  display: flex;
-  gap: 14px;
-  flex-wrap: wrap;
-  margin-top: 32px;
-}
-
-.btn {
-  padding: 14px 24px;
-  border-radius: 8px;
-  font-weight: bold;
-  text-decoration: none;
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  cursor: pointer;
-  transition: .2s;
-}
-
-.btn-gold {
-  background: var(--gold);
-  color: #14251b;
-  border: 1px solid var(--gold);
-}
-
-.btn-gold:hover {
-  transform: translateY(-2px);
-  background: #f1d18b;
-}
-
-.btn-outline {
-  border: 1px solid #a9b8ac;
-  color: white;
-  background: transparent;
-}
-
-.btn-outline:hover {
-  background: white;
-  color: var(--green);
-}
-
-main {
-  max-width: 1200px;
-  margin: auto;
-  padding: 55px 22px;
-}
-
-.section-title {
-  text-align: center;
-  margin-bottom: 35px;
-}
-
-.section-title h2 {
-  color: var(--green);
-  font-size: 30px;
-}
-
-.section-title p {
-  color: #66746b;
-  margin-top: 10px;
-}
-
-.cards {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 22px;
-}
-
-.card {
-  background: white;
-  padding: 28px;
-  border-radius: 14px;
-  border: 1px solid #e1e5dc;
-  box-shadow: 0 8px 25px rgba(25,45,30,.06);
-  transition: .25s;
-}
-
-.card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 12px 28px rgba(25,45,30,.12);
-}
-
-.card-icon {
-  width: 55px;
-  height: 55px;
-  border-radius: 12px;
-  background: #e9efe8;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 25px;
-  margin-bottom: 18px;
-}
-
-.card h3 {
-  color: var(--green);
-  margin-bottom: 12px;
-  font-size: 19px;
-}
-
-.card p {
-  color: #68746d;
-  line-height: 1.7;
-  font-size: 14px;
-  min-height: 72px;
-}
-
-.card button {
-  width: 100%;
-  margin-top: 20px;
-  padding: 13px;
-  border: none;
-  background: var(--green);
-  color: white;
-  border-radius: 8px;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-.card button:hover {
-  background: var(--green2);
-}
-
-.features {
-  margin-top: 60px;
-  background: #e7ece5;
-  border-radius: 16px;
-  padding: 35px;
-}
-
-.features h2 {
-  text-align: center;
-  color: var(--green);
-  margin-bottom: 25px;
-}
-
-.feature-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-}
-
-.feature {
-  text-align: center;
-  padding: 15px;
-}
-
-.feature strong {
-  display: block;
-  color: var(--green);
-  margin-bottom: 8px;
-}
-
-.feature span {
-  color: #66746b;
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-footer {
-  background: #10251c;
-  color: #dce4dd;
-  text-align: center;
-  padding: 30px 20px;
-  border-top: 3px solid var(--gold);
-}
-
-footer strong {
-  color: var(--gold);
-}
-
-footer p {
-  font-size: 13px;
-  margin-top: 8px;
-  line-height: 1.6;
-}
-
-@media (max-width: 850px) {
-  .cards {
-    grid-template-columns: 1fr;
-  }
-
-  .feature-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .hero {
-    padding: 55px 6%;
-  }
-
-  header {
-    padding: 15px 5%;
-  }
-}
-
-@media (max-width: 480px) {
-  .brand h1 {
-    font-size: 17px;
-  }
-
-  .logo {
-    width: 48px;
-    height: 48px;
-    font-size: 15px;
-  }
-
-  .hero h2 {
-    font-size: 32px;
-  }
-
-  .hero p {
-    font-size: 14px;
-  }
-
-  .hero-buttons .btn {
-    width: 100%;
-  }
-
-  .feature-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .features {
-    padding: 25px 15px;
-  }
-}
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--green:#17392c;--green2:#244b38;--gold:#e5bd64;--cream:#f4f2e9;--text:#1c2b24}
+body{font-family:Arial,Helvetica,sans-serif;background:var(--cream);color:var(--text)}
+header{background:linear-gradient(135deg,#10251c,#244b38);color:white;padding:15px 7%;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:15px;border-bottom:3px solid var(--gold)}
+.brand{display:flex;align-items:center;gap:14px}
+.logo{width:62px;height:62px;object-fit:contain;border:2px solid var(--gold);border-radius:50%;background:#fff;padding:2px;flex-shrink:0}
+.brand h1{font-size:22px;letter-spacing:1px}
+.brand p{font-size:12px;color:#d9dfd9;margin-top:5px}
+.header-button{border:1px solid var(--gold);padding:11px 20px;border-radius:30px;background:transparent;color:var(--gold);font-weight:bold;cursor:pointer}
+.header-button:hover{background:var(--gold);color:var(--green)}
+.hero{min-height:410px;background:linear-gradient(90deg,rgba(10,25,18,.96),rgba(19,46,32,.86)),radial-gradient(circle at right,#53745c,#142c22);display:flex;align-items:center;padding:60px 8%;color:white;position:relative;overflow:hidden}
+.hero::after{content:"E104A";position:absolute;right:4%;bottom:-50px;font-size:clamp(120px,23vw,320px);font-weight:900;color:rgba(255,255,255,.035);pointer-events:none}
+.hero-content{max-width:750px;position:relative;z-index:1}
+.tag{display:inline-block;border:1px solid var(--gold);color:var(--gold);padding:8px 14px;border-radius:30px;font-size:12px;letter-spacing:2px;margin-bottom:22px}
+.hero h2{font-size:clamp(30px,5vw,56px);line-height:1.2;margin-bottom:20px}
+.hero h2 span{color:var(--gold)}
+.hero p{color:#d5ddd6;font-size:16px;line-height:1.8;max-width:620px}
+.hero-buttons{display:flex;gap:14px;flex-wrap:wrap;margin-top:28px}
+.btn{padding:14px 24px;border-radius:8px;font-weight:bold;text-decoration:none;display:inline-flex;justify-content:center;align-items:center;cursor:pointer;transition:.2s}
+.btn-gold{background:var(--gold);color:#14251b;border:1px solid var(--gold)}
+.btn-gold:hover{transform:translateY(-2px);background:#f1d18b}
+.btn-outline{border:1px solid #a9b8ac;color:white;background:transparent}
+.btn-outline:hover{background:white;color:var(--green)}
+main{max-width:1200px;margin:auto;padding:45px 22px}
+.section-title{text-align:center;margin-bottom:30px}
+.section-title h2{color:var(--green);font-size:28px}
+.section-title p{color:#66746b;margin-top:10px}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.card{background:white;padding:25px;border-radius:14px;border:1px solid #e1e5dc;box-shadow:0 8px 25px rgba(25,45,30,.06);transition:.25s}
+.card:hover{transform:translateY(-5px);box-shadow:0 12px 28px rgba(25,45,30,.12)}
+.card-icon{width:52px;height:52px;border-radius:12px;background:#e9efe8;display:flex;justify-content:center;align-items:center;font-size:25px;margin-bottom:15px}
+.card h3{color:var(--green);margin-bottom:10px;font-size:19px}
+.card p{color:#68746d;line-height:1.7;font-size:14px;min-height:68px}
+.card button{width:100%;margin-top:17px;padding:13px;border:none;background:var(--green);color:white;border-radius:8px;font-weight:bold;cursor:pointer}
+.card button:hover{background:var(--green2)}
+.features{margin-top:45px;background:#e7ece5;border-radius:16px;padding:30px}
+.features h2{text-align:center;color:var(--green);margin-bottom:22px}
+.feature-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+.feature{text-align:center;padding:13px}
+.feature strong{display:block;color:var(--green);margin-bottom:8px}
+.feature span{color:#66746b;font-size:13px;line-height:1.6}
+footer{background:#10251c;color:#dce4dd;text-align:center;padding:26px 20px;border-top:3px solid var(--gold)}
+footer strong{color:var(--gold)}
+footer p{font-size:13px;margin-top:8px;line-height:1.6}
+@media(max-width:850px){.cards{grid-template-columns:1fr}.feature-grid{grid-template-columns:repeat(2,1fr)}.hero{padding:50px 6%}header{padding:14px 5%}}
+@media(max-width:480px){.brand h1{font-size:17px}.logo{width:50px;height:50px}.hero h2{font-size:32px}.hero p{font-size:14px}.hero-buttons .btn{width:100%}.feature-grid{grid-template-columns:1fr}.features{padding:23px 15px}}
 </style>
 </head>
-
 <body>
-
 <header>
   <div class="brand">
-    <div class="logo">E104A</div>
-    <div>
-      <h1>E104A</h1>
-      <p>HỆ THỐNG ÔN THI TRẮC NGHIỆM</p>
-    </div>
+    <img src="./0c96389c-2e71-4116-8d27-b30215a2705f.png" class="logo" alt="Logo chính thức E104A">
+    <div><h1>E104A</h1><p>HỆ THỐNG ÔN THI TRẮC NGHIỆM</p></div>
   </div>
-
-  <button class="header-button" onclick="openApp()">
-    VÀO ỨNG DỤNG →
-  </button>
+  <button class="header-button" onclick="openApp()">VÀO ỨNG DỤNG →</button>
 </header>
-
 <section class="hero">
   <div class="hero-content">
     <div class="tag">HỌC TẬP • LUYỆN TẬP • KIỂM TRA</div>
-
-    <h2>
-      Chủ động học tập<br>
-      <span>Vững vàng kiến thức</span>
-    </h2>
-
-    <p>
-      Hệ thống ôn thi trắc nghiệm E104A hỗ trợ luyện tập,
-      kiểm tra kiến thức, theo dõi kết quả và nâng cao hiệu quả
-      học tập. Giao diện đơn giản, thuận tiện trên máy tính
-      và điện thoại.
-    </p>
-
+    <h2>Chủ động học tập<br><span>Vững vàng kiến thức</span></h2>
+    <p>Hệ thống ôn thi trắc nghiệm E104A hỗ trợ luyện tập, kiểm tra kiến thức, theo dõi kết quả và nâng cao hiệu quả học tập. Giao diện đơn giản, thuận tiện trên máy tính và điện thoại.</p>
     <div class="hero-buttons">
-      <a href="javascript:void(0)" class="btn btn-gold" onclick="openApp()">
-        BẮT ĐẦU ÔN TẬP
-      </a>
-
-      <a href="#features" class="btn btn-outline">
-        KHÁM PHÁ TÍNH NĂNG
-      </a>
+      <a href="javascript:void(0)" class="btn btn-gold" onclick="openApp()">BẮT ĐẦU ÔN TẬP</a>
+      <a href="#features" class="btn btn-outline">KHÁM PHÁ TÍNH NĂNG</a>
     </div>
   </div>
 </section>
-
 <main>
-
   <section>
-    <div class="section-title">
-      <h2>HỌC TẬP VÀ KIỂM TRA</h2>
-      <p>Lựa chọn phương thức học tập phù hợp với mục tiêu của bạn</p>
-    </div>
-
+    <div class="section-title"><h2>HỌC TẬP VÀ KIỂM TRA</h2><p>Lựa chọn phương thức học tập phù hợp với mục tiêu của bạn</p></div>
     <div class="cards">
-
-      <div class="card">
-        <div class="card-icon">📚</div>
-        <h3>Chế độ luyện tập</h3>
-        <p>
-          Ôn tập ngân hàng câu hỏi, chủ động học tập,
-          củng cố kiến thức và xem giải thích đáp án.
-        </p>
-        <button onclick="openApp()">Vào luyện tập →</button>
-      </div>
-
-      <div class="card">
-        <div class="card-icon">🎯</div>
-        <h3>Chế độ thi</h3>
-        <p>
-          Thực hiện bài thi theo cấu hình, kiểm tra kiến thức,
-          tính điểm và đánh giá kết quả.
-        </p>
-        <button onclick="openApp()">Vào thi thử →</button>
-      </div>
-
-      <div class="card">
-        <div class="card-icon">📊</div>
-        <h3>Kết quả học tập</h3>
-        <p>
-          Theo dõi kết quả làm bài, lịch sử thi,
-          điểm số và quá trình học tập.
-        </p>
-        <button onclick="openApp()">Xem kết quả →</button>
-      </div>
-
+      <div class="card"><div class="card-icon">📚</div><h3>Chế độ luyện tập</h3><p>Ôn tập ngân hàng câu hỏi, chủ động học tập, củng cố kiến thức và xem giải thích đáp án.</p><button onclick="openApp()">Vào luyện tập →</button></div>
+      <div class="card"><div class="card-icon">🎯</div><h3>Chế độ thi</h3><p>Thực hiện bài thi theo cấu hình, kiểm tra kiến thức, tính điểm và đánh giá kết quả.</p><button onclick="openApp()">Vào thi thử →</button></div>
+      <div class="card"><div class="card-icon">📊</div><h3>Kết quả học tập</h3><p>Theo dõi kết quả làm bài, lịch sử thi, điểm số và quá trình học tập.</p><button onclick="openApp()">Xem kết quả →</button></div>
     </div>
   </section>
-
   <section class="features" id="features">
     <h2>HỆ THỐNG E104A</h2>
-
     <div class="feature-grid">
-
-      <div class="feature">
-        <strong>Ngân hàng câu hỏi</strong>
-        <span>Hệ thống câu hỏi theo từng môn học</span>
-      </div>
-
-      <div class="feature">
-        <strong>Thi ngẫu nhiên</strong>
-        <span>Hỗ trợ lựa chọn câu hỏi và tổ chức bài thi</span>
-      </div>
-
-      <div class="feature">
-        <strong>Chấm điểm tự động</strong>
-        <span>Đánh giá kết quả ngay sau khi hoàn thành</span>
-      </div>
-
-      <div class="feature">
-        <strong>Học mọi lúc</strong>
-        <span>Hỗ trợ máy tính, máy tính bảng và điện thoại</span>
-      </div>
-
+      <div class="feature"><strong>Ngân hàng câu hỏi</strong><span>Hệ thống câu hỏi theo từng môn học</span></div>
+      <div class="feature"><strong>Thi ngẫu nhiên</strong><span>Hỗ trợ lựa chọn câu hỏi và tổ chức bài thi</span></div>
+      <div class="feature"><strong>Chấm điểm tự động</strong><span>Đánh giá kết quả ngay sau khi hoàn thành</span></div>
+      <div class="feature"><strong>Học mọi lúc</strong><span>Hỗ trợ máy tính, máy tính bảng và điện thoại</span></div>
     </div>
   </section>
-
 </main>
-
-<footer>
-  <strong>E104A – ÔN THI TRẮC NGHIỆM</strong>
-  <p>Học tập nghiêm túc • Ôn luyện chủ động • Kiểm tra hiệu quả</p>
-  <p>© 2026 E104A</p>
-</footer>
-
+<footer><strong>E104A – ÔN THI TRẮC NGHIỆM</strong><p>Học tập nghiêm túc • Ôn luyện chủ động • Kiểm tra hiệu quả</p><p>© 2026 E104A</p></footer>
 <script>
-const APP_URL =
-"https://script.google.com/macros/s/AKfycbwQMylE8HyOBI_VfIzrE4jUDmVbnJ6Dge5eh4_cyau4mBmw2L3V-O5e_qL5YV6lzO8Pjg/exec";
-
-function openApp() {
-  window.open(APP_URL, "_blank");
-}
+const APP_URL="https://script.google.com/macros/s/AKfycbwQMylE8HyOBI_VfIzrE4jUDmVbnJ6Dge5eh4_cyau4mBmw2L3V-O5e_qL5YV6lzO8Pjg/exec";
+function openApp(){window.location.href=APP_URL;}
 </script>
-
 </body>
 </html>
