@@ -1616,6 +1616,113 @@ function callServer(functionName, args, success, failure) {
   document.head.appendChild(script);
 }
 
+
+// Gửi riêng file Word bằng POST tới bản triển khai Apps Script có doPost.
+// Các API GET/JSONP còn lại của ứng dụng được giữ nguyên.
+function callServerPost(functionName, args, success, failure) {
+  const API_URL = 'https://script.google.com/macros/s/AKfycbz1536xKvT4E9a-U53ilm1aNVt7zMQMma6lUaTfwtpOW0XDdW_6DDNCUGlcZ3_DdXez1Q/exec';
+  const nonce = 'wordpost_' + Date.now() + '_' + Math.floor(Math.random() * 1e9);
+  let finished = false;
+  let pollTimer = null;
+  let timeoutTimer = null;
+  let pollCount = 0;
+
+  function finish(err, response) {
+    if (finished) return;
+    finished = true;
+    if (pollTimer) clearTimeout(pollTimer);
+    if (timeoutTimer) clearTimeout(timeoutTimer);
+    if (err) {
+      if (typeof failure === 'function') failure(err);
+      return;
+    }
+    if (response && response.success) {
+      if (typeof success === 'function') success(response.data);
+    } else {
+      const apiError = new Error(response && response.error ? response.error : 'Máy chủ không xử lý được tệp Word.');
+      if (typeof failure === 'function') failure(apiError);
+    }
+  }
+
+  function checkStatus() {
+    if (finished) return;
+    pollCount++;
+    if (pollCount > 100) {
+      finish(new Error('Không nhận được trạng thái xử lý từ Apps Script. Kiểm tra triển khai Web App có chứa doPost.'));
+      return;
+    }
+
+    const callbackName = 'wordStatusCallback_' + Date.now() + '_' + Math.floor(Math.random() * 1e8);
+    const params = new URLSearchParams();
+    params.set('api', '1');
+    params.set('action', 'getWordPostStatus');
+    params.set('args', JSON.stringify([nonce]));
+    params.set('callback', callbackName);
+
+    const statusScript = document.createElement('script');
+    let settled = false;
+    const statusTimeout = setTimeout(function() {
+      if (settled || finished) return;
+      settled = true;
+      delete window[callbackName];
+      statusScript.remove();
+      pollTimer = setTimeout(checkStatus, 3000);
+    }, 15000);
+
+    window[callbackName] = function(apiResponse) {
+      if (settled || finished) return;
+      settled = true;
+      clearTimeout(statusTimeout);
+      delete window[callbackName];
+      statusScript.remove();
+
+      if (apiResponse && apiResponse.success) {
+        const status = apiResponse.data;
+        if (status && status.state === 'done') {
+          finish(null, status.response);
+          return;
+        }
+      }
+      pollTimer = setTimeout(checkStatus, 2500);
+    };
+
+    statusScript.onerror = function() {
+      if (settled || finished) return;
+      settled = true;
+      clearTimeout(statusTimeout);
+      delete window[callbackName];
+      statusScript.remove();
+      pollTimer = setTimeout(checkStatus, 3500);
+    };
+    statusScript.src = API_URL + '?' + params.toString();
+    document.head.appendChild(statusScript);
+  }
+
+  timeoutTimer = setTimeout(function() {
+    finish(new Error('Quá 5 phút chưa nhận được kết quả xử lý Word. Hãy kiểm tra nhật ký Apps Script.'));
+  }, 310000);
+
+  const formData = new URLSearchParams();
+  formData.set('api', '1');
+  formData.set('action', functionName);
+  formData.set('args', JSON.stringify(args || []));
+  formData.set('nonce', nonce);
+
+  fetch(API_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    credentials: 'omit',
+    cache: 'no-store',
+    body: formData.toString(),
+    headers: {'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'}
+  }).then(function() {
+    pollTimer = setTimeout(checkStatus, 1500);
+  }).catch(function(error) {
+    finish(new Error('Không gửi được file Word tới Apps Script: ' +
+      (error && error.message ? error.message : String(error))));
+  });
+}
+
 function showSection(id) {
   ['home', 'quiz', 'result', 'admin'].forEach(name => {
     $(name).classList.toggle('hidden', name !== id);
@@ -2648,7 +2755,7 @@ function previewWordFile() {
   const reader = new FileReader();
   reader.onload = function() {
     const base64 = String(reader.result).split(',')[1];
-    callServer('previewWordQuestions', [adminPassword, file.name, base64, subject, file.type || ''], function(data) {
+    callServerPost('previewWordQuestions', [adminPassword, file.name, base64, subject, file.type || ''], function(data) {
       wordImportToken = data.token; wordPreviewQuestions = data.questions || [];
       $('wordMessage').textContent = 'Đọc được ' + data.total + ' câu. Nhận dạng đáp án: ' + data.ready + '. Cần kiểm tra: ' + data.review + '.';
       renderWordPreview();
