@@ -1246,7 +1246,11 @@ body {
       <div id="progressBar"></div>
     </div>
 
-    <div class="question-layout">
+    <div id="quizLoading" class="message" style="display:none; text-align:center; padding:36px 16px; font-size:18px; font-weight:600;">
+      Đang chuẩn bị bài làm, vui lòng chờ trong giây lát...
+    </div>
+
+    <div id="quizContent" class="question-layout hidden">
       <div class="question-main">
         <div class="question-number">
           CÂU HỎI <span id="currentNumber">1</span>
@@ -1561,6 +1565,7 @@ let adminPassword = '';
 let adminData = null;
 let selectedExamId = '';
 let quizSubmitting = false;
+let quizStarting = false;
 
 /* HÀM HỖ TRỢ */
 
@@ -1755,6 +1760,8 @@ function renderSubjectCards(subjects) {
 
 /* BẮT ĐẦU BÀI THEO MÔN ĐƯỢC CHỌN */
 function startQuiz(subjectOverride, modeOverride) {
+  if (quizStarting) return;
+
   const name = getStudentCode();
   const subject = subjectOverride || $('subject').value;
   const mode = modeOverride || currentMode;
@@ -1765,11 +1772,25 @@ function startQuiz(subjectOverride, modeOverride) {
     return;
   }
 
+  quizStarting = true;
   currentMode = mode;
   $('subject').value = subject;
-  $('homeMessage').textContent = mode === 'exam'
-    ? 'Đang chọn ngẫu nhiên 30 câu và tạo bài thi...'
-    : 'Đang tải toàn bộ câu hỏi để luyện tập...';
+  $('homeMessage').textContent = '';
+
+  // Chuyển màn hình ngay khi click; phần câu hỏi được mở khi máy chủ trả dữ liệu.
+  $('quizSubject').textContent = subject;
+  $('quizInfo').textContent = mode === 'exam' ? 'Thi kiểm tra ngẫu nhiên 30 câu' : 'Luyện tập';
+  $('totalNumber').textContent = '...';
+  $('currentNumber').textContent = '1';
+  $('questionText').textContent = '';
+  $('options').innerHTML = '';
+  $('questionNav').innerHTML = '';
+  $('explanation').classList.add('hidden');
+  $('quizContent').classList.add('hidden');
+  $('quizLoading').style.display = 'block';
+  $('timerBox').classList.toggle('hidden', mode !== 'exam');
+  clearInterval(timerInterval);
+  showSection('quiz');
 
   callServer('startQuiz', [{
     name: name,
@@ -1778,7 +1799,9 @@ function startQuiz(subjectOverride, modeOverride) {
     count: count,
     examId: ''
   }], function(data) {
-    $('homeMessage').textContent = '';
+    quizStarting = false;
+    $('quizLoading').style.display = 'none';
+    $('quizContent').classList.remove('hidden');
     quizData = data;
     answers = {};
     marked = {};
@@ -1797,10 +1820,12 @@ function startQuiz(subjectOverride, modeOverride) {
     } else {
       clearInterval(timerInterval);
     }
-    showSection('quiz');
     renderQuestion();
   }, function(error) {
+    quizStarting = false;
+    $('quizLoading').style.display = 'none';
     $('homeMessage').textContent = error.message || 'Không thể tạo bài thi.';
+    showSection('home');
   });
 }
 
