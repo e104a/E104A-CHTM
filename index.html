@@ -2638,6 +2638,89 @@ document.addEventListener('DOMContentLoaded', function() {
 /* NHẬP WORD VÀ NHẬN DẠNG ĐÁP ÁN */
 let wordImportToken = '';
 let wordPreviewQuestions = [];
+
+/* GỬI FILE WORD BẰNG POST: tránh giới hạn độ dài URL/JSONP */
+function callServerPost(functionName, args, success, failure) {
+  const API_URL = 'https://script.google.com/macros/s/AKfycbz1536xKvT4E9a-U53ilm1aNVt7zMQMma6lUaTfwtpOW0XDdW_6DDNCUGlcZ3_DdXez1Q/exec';
+  const nonce = 'wordpost_' + Date.now() + '_' + Math.floor(Math.random() * 1e9);
+  const iframe = document.createElement('iframe');
+  iframe.name = nonce;
+  iframe.id = nonce;
+  iframe.style.cssText = 'position:absolute;width:1px;height:1px;left:-10000px;border:0;';
+  iframe.setAttribute('aria-hidden', 'true');
+
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = API_URL;
+  form.target = nonce;
+  form.enctype = 'application/x-www-form-urlencoded';
+  form.style.display = 'none';
+
+  const fields = {api:'1', action:functionName, args:JSON.stringify(args || []), nonce:nonce};
+  Object.keys(fields).forEach(function(key) {
+    const input = document.createElement('textarea');
+    input.name = key;
+    input.value = fields[key];
+    form.appendChild(input);
+  });
+
+  let settled = false;
+  let pollTimer = null;
+  let pollCount = 0;
+  const maxPolls = 100;
+
+  function cleanup() {
+    if (pollTimer) clearTimeout(pollTimer);
+    clearTimeout(hardTimeout);
+    form.remove();
+    iframe.remove();
+  }
+  function finish(error, response) {
+    if (settled) return;
+    settled = true;
+    cleanup();
+    if (error) {
+      if (typeof failure === 'function') failure(error);
+      else alert(error.message || 'Lỗi nhập Word.');
+      return;
+    }
+    if (response && response.success) {
+      if (typeof success === 'function') success(response.data);
+      return;
+    }
+    const apiError = new Error(response && response.error ? response.error : 'Máy chủ không trả về kết quả Word hợp lệ.');
+    if (typeof failure === 'function') failure(apiError);
+    else alert(apiError.message);
+  }
+
+  const hardTimeout = window.setTimeout(function() {
+    finish(new Error('Quá 5 phút chưa nhận được kết quả xử lý Word. Hãy kiểm tra trạng thái triển khai Apps Script.'));
+  }, 310000);
+
+  function poll() {
+    if (settled) return;
+    pollCount++;
+    if (pollCount > maxPolls) {
+      finish(new Error('Đã hết số lần kiểm tra trạng thái Word. Không nhận được kết quả từ máy chủ.'));
+      return;
+    }
+    callServer('getWordPostStatus', [nonce], function(status) {
+      if (status && status.state === 'done') {
+        finish(null, status.response);
+        return;
+      }
+      pollTimer = setTimeout(poll, 3000);
+    }, function() {
+      pollTimer = setTimeout(poll, 4000);
+    });
+  }
+
+  document.body.appendChild(iframe);
+  document.body.appendChild(form);
+  form.submit();
+  pollTimer = setTimeout(poll, 2000);
+}
+
 function previewWordFile() {
   const file = $('wordFile').files[0];
   const subject = $('wordSubject').value;
@@ -2648,7 +2731,7 @@ function previewWordFile() {
   const reader = new FileReader();
   reader.onload = function() {
     const base64 = String(reader.result).split(',')[1];
-    callServer('previewWordQuestions', [adminPassword, file.name, base64, subject, file.type || ''], function(data) {
+    callServerPost('previewWordQuestions', [adminPassword, file.name, base64, subject, file.type || ''], function(data) {
       wordImportToken = data.token; wordPreviewQuestions = data.questions || [];
       $('wordMessage').textContent = 'Đọc được ' + data.total + ' câu. Nhận dạng đáp án: ' + data.ready + '. Cần kiểm tra: ' + data.review + '.';
       renderWordPreview();
