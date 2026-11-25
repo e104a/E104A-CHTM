@@ -2917,11 +2917,12 @@ function confirmWordImportFromPreview() {
     selected.push(i);
   });
   if (!selected.length) { $('wordMessage').textContent='Chưa có câu hợp lệ được chọn. Mỗi câu cần ít nhất 2 phương án và đáp án đúng hợp lệ.'; return; }
-  const replaceExisting = !!$('wordImportReplace').checked;
+  const selectedMode = document.querySelector('input[name="wordImportMode"]:checked');
+  const replaceExisting = !!selectedMode && selectedMode.value === 'replace';
   const subjectName = $('wordSubject').value;
   const confirmText = replaceExisting
-    ? 'CẢNH BÁO: Thay thế toàn bộ ngân hàng câu hỏi môn ' + subjectName + '?\n\nHệ thống sẽ xóa các câu hỏi cũ của riêng môn này và lưu ' + selected.length + ' câu được chọn từ tệp mới. Các môn khác không bị ảnh hưởng. Thao tác xóa câu hỏi cũ không thể hoàn tác.'
-    : 'Bổ sung ' + selected.length + ' câu hỏi vào ngân hàng môn ' + subjectName + '?';
+    ? 'CHẾ ĐỘ: THAY THẾ TOÀN BỘ.\n\nMôn: ' + subjectName + '\nBộ mới: ' + selected.length + ' câu.\n\nHệ thống sẽ loại câu hỏi cũ của riêng môn này trước khi ghi bộ mới. Các môn khác không bị ảnh hưởng. Thao tác không thể hoàn tác.'
+    : 'CHẾ ĐỘ: BỔ SUNG.\n\nThêm ' + selected.length + ' câu hỏi vào ngân hàng môn ' + subjectName + '?';
   if (!confirm(confirmText)) return;
   callServer('confirmWordImport', [adminPassword, wordImportToken, selected, replaceExisting], function(msg) {
     $('wordMessage').textContent=msg; $('wordPreview').innerHTML=''; $('wordFile').value=''; wordImportToken=''; loadAdminData();
