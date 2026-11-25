@@ -883,7 +883,24 @@ body {
   border-radius:10px !important; background:linear-gradient(110deg,#e8f7ec,#f8fff8) !important;
   color:#17442e !important; padding:17px !important;
 }
-#quiz .question-actions { margin-top:22px !important; }
+#quiz .question-actions {
+  margin-top: 0 !important;
+  margin-bottom: 18px !important;
+}
+#quiz .question-actions-top {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex-wrap: nowrap !important;
+  gap: 10px !important;
+}
+#quiz .question-actions-top button {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  min-height: 44px !important;
+  touch-action: manipulation;
+  white-space: nowrap;
+}
 #quiz .question-actions button, #quiz .submit-area button {
   min-height:44px !important; border-radius:11px !important; font-size:15px !important;
   box-shadow:0 3px 6px #162d201c !important;
@@ -1020,8 +1037,18 @@ body {
   #quiz .quiz-top { align-items:flex-start !important; flex-direction:column !important; }
   #quiz .question-main { padding:12px !important; }
   #quiz .question-nav { grid-template-columns:repeat(6,minmax(0,1fr)) !important; }
-  #quiz .question-actions { display:grid !important; grid-template-columns:1fr 1fr !important; }
-  #quiz .question-actions button:last-child { grid-column:1/-1 !important; }
+  #quiz .question-actions {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 6px !important;
+  }
+  #quiz .question-actions-top button {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    padding: 10px 6px !important;
+    font-size: 12px !important;
+    white-space: nowrap !important;
+  }
   #quiz .submit-area { align-items:stretch !important; flex-direction:column !important; }
   #result .stats-grid { gap:8px !important; }
   #result .stat-card { padding:13px 6px !important; }
@@ -1257,13 +1284,7 @@ body {
           / <span id="totalNumber">0</span>
         </div>
 
-        <div id="questionText" class="question-text"></div>
-
-        <div id="options" class="options"></div>
-
-        <div id="explanation" class="explanation hidden"></div>
-
-        <div class="question-actions">
+        <div class="question-actions question-actions-top">
           <button class="secondary-button" onclick="previousQuestion()">
             ← Câu trước
           </button>
@@ -1277,6 +1298,12 @@ body {
             Câu tiếp →
           </button>
         </div>
+
+        <div id="questionText" class="question-text"></div>
+
+        <div id="options" class="options"></div>
+
+        <div id="explanation" class="explanation hidden"></div>
       </div>
 
       <aside class="question-sidebar">
