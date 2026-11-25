@@ -1402,7 +1402,8 @@ body {
 
       <!-- THÊM CÂU HỎI -->
       <div id="addTab" class="admin-tab hidden">
-        <h3>THÊM CÂU HỎI MỚI</h3>
+        <h3 id="questionFormTitle">THÊM CÂU HỎI MỚI</h3>
+        <p id="questionEditNotice" class="message" style="display:none"></p>
 
         <div class="form-group">
           <label>Môn học</label>
@@ -1441,9 +1442,10 @@ body {
           <textarea id="qExplanation" rows="3"></textarea>
         </div>
 
-        <button class="primary-button" onclick="saveQuestion()">
+        <button id="saveQuestionButton" class="primary-button" onclick="saveQuestion()">
           LƯU CÂU HỎI
         </button>
+        <button id="cancelQuestionEditButton" type="button" class="secondary-button" style="display:none" onclick="cancelQuestionEdit()">HỦY CHỈNH SỬA</button>
         <div id="addMessage" class="message"></div>
       </div>
 
@@ -2593,7 +2595,8 @@ function renderExams() {
   });
 }
 
-/* THÊM CÂU HỎI */
+/* THÊM / CHỈNH SỬA CÂU HỎI */
+let editingQuestionId = '';
 
 function renderManualOptionInputs() {
   const box = $('qOptionInputs');
@@ -2678,18 +2681,71 @@ function saveQuestion() {
     correct: correct,
     explanation: $('qExplanation').value
   };
-  $('addMessage').textContent = 'Đang lưu câu hỏi...';
-  callServer('addQuestion', [adminPassword, data], function(message) {
+  const isEditing = Boolean(editingQuestionId);
+  $('addMessage').textContent = isEditing ? 'Đang cập nhật câu hỏi...' : 'Đang lưu câu hỏi...';
+  callServer(isEditing ? 'updateQuestion' : 'addQuestion', isEditing ? [adminPassword, editingQuestionId, data] : [adminPassword, data], function(message) {
     $('addMessage').textContent = message;
-    $('qChapter').value = '';
-    $('qQuestion').value = '';
-    $('qExplanation').value = '';
-    $('qOptionCount').value = '4';
-    renderManualOptionInputs();
+    resetQuestionForm();
     loadAdminData();
   }, function(error) {
-    $('addMessage').textContent = (error && error.message) || 'Không lưu được câu hỏi.';
+    $('addMessage').textContent = (error && error.message) || (isEditing ? 'Không cập nhật được câu hỏi.' : 'Không lưu được câu hỏi.');
   });
+}
+
+function editQuestion(questionId) {
+  const questions = adminData && Array.isArray(adminData.questions) ? adminData.questions : [];
+  const q = questions.find(item => String(item.ID) === String(questionId));
+  if (!q) { alert('Không tìm thấy câu hỏi cần chỉnh sửa.'); return; }
+  editingQuestionId = String(q.ID);
+  adminTab('addTab');
+  $('questionFormTitle').textContent = 'CHỈNH SỬA CÂU HỎI';
+  $('saveQuestionButton').textContent = 'CẬP NHẬT CÂU HỎI';
+  $('cancelQuestionEditButton').style.display = 'inline-block';
+  const notice = $('questionEditNotice');
+  notice.style.display = 'block';
+  notice.textContent = 'Đang chỉnh sửa câu hỏi thuộc môn ' + String(q.SUBJECT || '') + '. Sau khi lưu, nội dung câu hỏi được cập nhật trong ngân hàng của môn tương ứng.';
+  $('qSubject').value = String(q.SUBJECT || '');
+  $('qChapter').value = String(q.CHAPTER || '');
+  $('qQuestion').value = String(q.QUESTION || '');
+  $('qExplanation').value = String(q.EXPLANATION || '');
+  let parsed = [];
+  try {
+    const raw = q.OPTIONS_JSON ? JSON.parse(q.OPTIONS_JSON) : [];
+    if (Array.isArray(raw)) parsed = raw;
+    else if (raw && typeof raw === 'object') parsed = Object.keys(raw).sort().map(key => ({key:key, text:raw[key]}));
+  } catch (e) { parsed = []; }
+  if (!parsed.length) {
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(key => { if (q[key] != null && String(q[key]).trim()) parsed.push({key:key, text:String(q[key])}); });
+  }
+  if (parsed.length < 2) parsed = [{key:'A',text:String(q.A || '')},{key:'B',text:String(q.B || '')}].filter(o => o.text);
+  $('qOptionCount').value = String(Math.max(2, parsed.length));
+  renderManualOptionInputs();
+  parsed.forEach((o, i) => {
+    const key = String.fromCharCode(65 + i);
+    const el = $('qOption_' + key);
+    if (el) el.value = String(o.text == null ? '' : o.text);
+  });
+  $('qCorrect').value = String(q.CORRECT || 'A').toUpperCase();
+  $('addMessage').textContent = '';
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function cancelQuestionEdit() {
+  resetQuestionForm();
+}
+
+function resetQuestionForm() {
+  editingQuestionId = '';
+  $('questionFormTitle').textContent = 'THÊM CÂU HỎI MỚI';
+  $('saveQuestionButton').textContent = 'LƯU CÂU HỎI';
+  $('cancelQuestionEditButton').style.display = 'none';
+  $('questionEditNotice').style.display = 'none';
+  $('qChapter').value = '';
+  $('qQuestion').value = '';
+  $('qExplanation').value = '';
+  $('qOptionCount').value = '4';
+  renderManualOptionInputs();
+  $('addMessage').textContent = '';
 }
 
 // Đồng bộ lại danh sách phương án khi người dùng nhập hoặc chọn số lượng.
@@ -2987,6 +3043,11 @@ function renderAdminQuestions() {
 
     const actions = document.createElement('div');
     actions.className = 'bank-question-actions';
+    const edit = document.createElement('button');
+    edit.type = 'button';
+    edit.className = 'primary-button';
+    edit.textContent = 'Chỉnh sửa';
+    edit.onclick = function() { editQuestion(q.ID); };
     const toggle = document.createElement('button');
     toggle.type = 'button';
     toggle.className = 'secondary-button';
@@ -3008,7 +3069,7 @@ function renderAdminQuestions() {
         alert((err && err.message) || 'Không xóa được câu hỏi.');
       });
     };
-    actions.append(toggle, del);
+    actions.append(edit, toggle, del);
     div.append(top, questionText, options, meta, actions);
     box.appendChild(div);
   });
