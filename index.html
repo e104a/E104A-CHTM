@@ -2493,7 +2493,7 @@ function renderSubjects(subjectList) {
     remove.className = 'secondary-button subject-delete-button';
     remove.textContent = 'Xóa môn';
     remove.onclick = function() {
-      if (!confirm('Bạn có chắc chắn muốn xóa môn học “' + name + '”?\n\nNếu môn đã có câu hỏi hoặc đề thi, hệ thống sẽ khóa môn để bảo toàn dữ liệu.')) return;
+      if (!confirm('CẢNH BÁO: Xóa môn học “' + name + '”?\n\nHệ thống sẽ xóa vĩnh viễn tên môn học, toàn bộ câu hỏi thuộc môn này và các đề thi được tạo cho môn. Lịch sử kết quả thi sẽ được giữ nguyên.\n\nBạn có chắc chắn muốn tiếp tục không?')) return;
       if ($('subjectMessage')) $('subjectMessage').textContent = 'Đang xử lý...';
       callServer('deleteSubject', [adminPassword, id], function(msg) {
         if ($('subjectMessage')) $('subjectMessage').textContent = msg;
