@@ -1454,6 +1454,11 @@ body {
         <h3>NHẬP CÂU HỎI TỪ WORD</h3>
         <p>Tải tệp Word hoặc tài liệu tương thích. Hệ thống đọc dòng “Đáp án đúng: X” trước; nếu không có sẽ đối chiếu định dạng in đậm, nghiêng, màu chữ và tô nền. Mỗi câu có thể có từ 2 phương án trở lên (A–Z). Câu chưa chắc chắn sẽ yêu cầu Admin kiểm tra.</p>
         <div class="form-group"><label>Môn học nhập câu hỏi</label><select id="wordSubject"></select></div>
+        <div class="form-group"><label>Hình thức cập nhật ngân hàng</label>
+          <label style="font-weight:normal;display:flex;gap:8px;align-items:flex-start"><input type="radio" name="wordImportMode" id="wordImportAppend" value="append" checked style="width:auto;margin-top:3px"> <span><b>Bổ sung câu hỏi</b> – giữ câu hỏi cũ và thêm các câu mới.</span></label>
+          <label style="font-weight:normal;display:flex;gap:8px;align-items:flex-start;margin-top:8px"><input type="radio" name="wordImportMode" id="wordImportReplace" value="replace" style="width:auto;margin-top:3px"> <span><b>Thay thế toàn bộ ngân hàng môn này</b> – xóa câu hỏi cũ của môn đang chọn và thay bằng các câu được chọn từ tệp mới. Các môn khác không bị ảnh hưởng.</span></label>
+          <small style="color:#b42318">Khi chọn thay thế, chỉ các câu được đánh dấu và có đáp án hợp lệ trong phần xem trước mới được lưu. Câu hỏi cũ của môn này sẽ bị xóa sau khi dữ liệu mới được kiểm tra hợp lệ.</small>
+        </div>
         <div class="form-group"><label>Chọn tệp tài liệu Word</label><input id="wordFile" type="file" accept="*/*"><small>Cho phép chọn .doc, .docx, .docm, .rtf, .odt và các tệp khác. Hệ thống sẽ thử chuyển đổi; định dạng không tương thích sẽ báo lỗi.</small></div>
         <button class="primary-button" onclick="previewWordFile()">ĐỌC FILE VÀ XEM TRƯỚC</button>
         <div id="wordMessage" class="message"></div>
@@ -2912,8 +2917,13 @@ function confirmWordImportFromPreview() {
     selected.push(i);
   });
   if (!selected.length) { $('wordMessage').textContent='Chưa có câu hợp lệ được chọn. Mỗi câu cần ít nhất 2 phương án và đáp án đúng hợp lệ.'; return; }
-  if (!confirm('Nhập ' + selected.length + ' câu hỏi vào ngân hàng?')) return;
-  callServer('confirmWordImport', [adminPassword, wordImportToken, selected], function(msg) {
+  const replaceExisting = !!$('wordImportReplace').checked;
+  const subjectName = $('wordSubject').value;
+  const confirmText = replaceExisting
+    ? 'CẢNH BÁO: Thay thế toàn bộ ngân hàng câu hỏi môn ' + subjectName + '?\n\nHệ thống sẽ xóa các câu hỏi cũ của riêng môn này và lưu ' + selected.length + ' câu được chọn từ tệp mới. Các môn khác không bị ảnh hưởng. Thao tác xóa câu hỏi cũ không thể hoàn tác.'
+    : 'Bổ sung ' + selected.length + ' câu hỏi vào ngân hàng môn ' + subjectName + '?';
+  if (!confirm(confirmText)) return;
+  callServer('confirmWordImport', [adminPassword, wordImportToken, selected, replaceExisting], function(msg) {
     $('wordMessage').textContent=msg; $('wordPreview').innerHTML=''; $('wordFile').value=''; wordImportToken=''; loadAdminData();
   }, function(err) { $('wordMessage').textContent=err.message || 'Nhập câu hỏi thất bại.'; });
 }
