@@ -1172,6 +1172,49 @@ body {
 }
 #result .detail-row { line-height:1.55; }
 
+
+/* Bố cục hai lựa chọn bổ sung/thay thế trong phần nhập Word */
+#importTab .word-import-modes {
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:stretch !important;
+  justify-content:flex-start !important;
+  gap:10px !important;
+  width:100% !important;
+}
+#importTab .word-import-mode-option {
+  display:flex !important;
+  flex-direction:row !important;
+  flex-wrap:nowrap !important;
+  align-items:flex-start !important;
+  justify-content:flex-start !important;
+  gap:10px !important;
+  width:100% !important;
+  margin:0 !important;
+  padding:10px 12px !important;
+  box-sizing:border-box !important;
+  font-weight:normal !important;
+  text-align:left !important;
+  line-height:1.5 !important;
+  cursor:pointer;
+}
+#importTab .word-import-mode-option input[type="radio"] {
+  display:inline-block !important;
+  flex:0 0 16px !important;
+  width:16px !important;
+  min-width:16px !important;
+  max-width:16px !important;
+  height:16px !important;
+  margin:3px 0 0 !important;
+  padding:0 !important;
+}
+#importTab .word-import-mode-option span {
+  display:block !important;
+  flex:1 1 auto !important;
+  min-width:0 !important;
+  width:auto !important;
+  text-align:left !important;
+}
 </style>
 </head>
 <body>
@@ -2018,50 +2061,7 @@ function downloadSubjectWord(subjectName, button) {
       });
       const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' +
         'body{font-family:"Times New Roman";font-size:13pt;line-height:1.45;color:#111}h1{text-align:center;font-size:16pt}.meta{text-align:center;font-weight:bold}.question{margin:0 0 13pt;page-break-inside:avoid}.q{margin-bottom:5pt}.option{margin:2pt 0 2pt 18pt}.correct{color:#c00000;font-weight:bold}.answer{margin:5pt 0;color:#c00000}.explain{margin:4pt 0 10pt;font-style:italic}' +
-        '
-/* Sửa bố cục hai lựa chọn bổ sung/thay thế trong phần nhập Word */
-#importTab .word-import-modes {
-  display:flex !important;
-  flex-direction:column !important;
-  align-items:stretch !important;
-  justify-content:flex-start !important;
-  gap:10px !important;
-  width:100% !important;
-}
-#importTab .word-import-mode-option {
-  display:flex !important;
-  flex-direction:row !important;
-  flex-wrap:nowrap !important;
-  align-items:flex-start !important;
-  justify-content:flex-start !important;
-  gap:10px !important;
-  width:100% !important;
-  margin:0 !important;
-  padding:10px 12px !important;
-  box-sizing:border-box !important;
-  font-weight:normal !important;
-  text-align:left !important;
-  line-height:1.5 !important;
-  cursor:pointer;
-}
-#importTab .word-import-mode-option input[type="radio"] {
-  display:inline-block !important;
-  flex:0 0 16px !important;
-  width:16px !important;
-  min-width:16px !important;
-  max-width:16px !important;
-  height:16px !important;
-  margin:3px 0 0 !important;
-  padding:0 !important;
-}
-#importTab .word-import-mode-option span {
-  display:block !important;
-  flex:1 1 auto !important;
-  min-width:0 !important;
-  width:auto !important;
-  text-align:left !important;
-}
-</style></head><body>' + body + '</body></html>';
+        '</style></head><body>' + body + '</body></html>';
       const blob = new Blob(['\ufeff', html], {type:'application/msword;charset=utf-8'});
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
