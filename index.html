@@ -1960,6 +1960,45 @@ function getStudentCode() {
 
 /* BẮT ĐẦU */
 
+
+/* TẢI TÀI LIỆU ÔN TẬP MÔN HỌC DẠNG WORD (.doc) */
+function downloadSubjectWord(subjectName, button) {
+  const oldText = button ? button.textContent : '';
+  if (button) { button.disabled = true; button.textContent = 'ĐANG TẠO FILE...'; }
+  callServer('getSubjectDocument', [subjectName], function(data) {
+    try {
+      const esc = value => String(value == null ? '' : value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      let body = '<h1>TÀI LIỆU ÔN TẬP MÔN ' + esc(data.subject) + '</h1>';
+      body += '<p class="meta">LỚP E104A - HỆ 2 - HỌC VIỆN HẬU CẦN</p>';
+      body += '<p><b>Tổng số câu hỏi:</b> ' + Number(data.total || 0) + '</p><hr>';
+      (data.questions || []).forEach((q, i) => {
+        body += '<div class="question"><p class="q"><b>Câu ' + (i+1) + ': ' + esc(q.question) + '</b></p>';
+        (q.options || []).forEach(o => {
+          const isCorrect = String(o.key).toUpperCase() === String(q.correct).toUpperCase();
+          body += '<p class="option' + (isCorrect ? ' correct' : '') + '">' + esc(o.key) + '. ' + esc(o.text) + (isCorrect ? ' <b>(ĐÁP ÁN ĐÚNG)</b>' : '') + '</p>';
+        });
+        body += '<p class="answer"><b>Đáp án đúng: ' + esc(q.correct || 'Chưa xác định') + '</b></p>';
+        if (String(q.explanation || '').trim()) body += '<p class="explain"><b>Giải thích:</b> ' + esc(q.explanation).replace(/\r?\n/g,'<br>') + '</p>';
+        body += '</div>';
+      });
+      const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' +
+        'body{font-family:"Times New Roman";font-size:13pt;line-height:1.45;color:#111}h1{text-align:center;font-size:16pt}.meta{text-align:center;font-weight:bold}.question{margin:0 0 13pt;page-break-inside:avoid}.q{margin-bottom:5pt}.option{margin:2pt 0 2pt 18pt}.correct{color:#c00000;font-weight:bold}.answer{margin:5pt 0;color:#c00000}.explain{margin:4pt 0 10pt;font-style:italic}' +
+        '</style></head><body>' + body + '</body></html>';
+      const blob = new Blob(['\ufeff', html], {type:'application/msword;charset=utf-8'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const safeName = String(data.subject || 'Mon_hoc').replace(/[\\/:*?"<>|]/g,'_').trim();
+      a.href = url; a.download = 'Tai_lieu_on_tap_' + safeName + '.doc';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+    } catch (err) { alert('Không tạo được file Word: ' + (err.message || err)); }
+    finally { if (button) { button.disabled = false; button.textContent = oldText || 'TẢI TÀI LIỆU WORD'; } }
+  }, function(error) {
+    alert('Không tải được tài liệu: ' + (error.message || error));
+    if (button) { button.disabled = false; button.textContent = oldText || 'TẢI TÀI LIỆU WORD'; }
+  });
+}
+
 function renderSubjectCards(subjects) {
   const box = $('subjectCards');
   if (!box) return;
@@ -2001,7 +2040,13 @@ function renderSubjectCards(subjects) {
     exam.className = 'subject-action exam';
     exam.innerHTML = '<span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 3h10l3 3v15H4V3zM8 9h8M8 13h8M8 17h5"/><path d="m15 5 2 2"/></svg></span><span>Thi kiểm tra</span>';
     exam.addEventListener('click', () => startQuiz(subject.name, 'exam'));
-    body.append(desc, count, practice, exam);
+    const download = document.createElement('button');
+    download.type = 'button';
+    download.className = 'subject-action download';
+    download.textContent = 'TẢI TÀI LIỆU WORD';
+    download.style.cssText = 'grid-column:1/-1;background:#fff4d6;color:#704b00;border:1px solid #d8b45b;';
+    download.addEventListener('click', () => downloadSubjectWord(subject.name, download));
+    body.append(desc, count, practice, exam, download);
     card.append(top, body);
     box.appendChild(card);
   });
