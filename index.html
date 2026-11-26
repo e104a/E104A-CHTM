@@ -1277,8 +1277,6 @@ body {
 
         <div id="questionText" class="question-text"></div>
 
-        <div id="options" class="options"></div>
-
         <div class="question-actions">
           <button class="secondary-button" onclick="previousQuestion()">
             ← Câu trước
@@ -1293,6 +1291,8 @@ body {
             Câu tiếp →
           </button>
         </div>
+
+        <div id="options" class="options"></div>
 
         <div id="explanation" class="explanation hidden"></div>
       </div>
@@ -2229,7 +2229,7 @@ function showResult(data) {
 
     const heading = document.createElement('div');
     heading.style.cssText = 'font-weight:800;color:#07513d;margin-bottom:8px;';
-    heading.textContent = 'Câu ' + (index + 1) + ': ' + (d.isCorrect ? 'ĐÚNG' : 'SAI');
+    heading.textContent = 'Câu ' + (index + 1) + ': ' + (d.isCorrect ? 'ĐÚNG' : (d.selected ? 'SAI' : 'CHƯA TRẢ LỜI'));
     heading.style.color = d.isCorrect ? '#16834b' : '#c91518';
     div.appendChild(heading);
 
@@ -2258,6 +2258,8 @@ function showResult(data) {
         line.style.background = '#fdeaea';
         line.style.border = '1px solid #c91518';
         line.style.color = '#a51d24';
+        line.style.fontWeight = '750';
+        line.textContent += '  ✗ BẠN ĐÃ CHỌN';
       } else {
         line.style.background = '#f5f6f7';
         line.style.border = '1px solid #e1e4e8';
