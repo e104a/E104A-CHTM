@@ -1891,9 +1891,36 @@ window.addEventListener('online',()=>{setOfflineStatus();syncOfflineAttempts();}
 window.addEventListener('offline',setOfflineStatus);
 document.addEventListener('DOMContentLoaded',setOfflineStatus);
 
+function isSubjectActiveForList(subject) {
+  const value = String(subject && subject.ACTIVE != null ? subject.ACTIVE : '').trim().toUpperCase();
+  return !['FALSE', '0', 'NO', 'KHÓA', 'KHOA', 'INACTIVE'].includes(value);
+}
+
+// Khử môn trùng tên khi nhận dữ liệu từ máy chủ/bộ nhớ ngoại tuyến.
+// Ưu tiên bản ghi đang hoạt động; không sửa hoặc xóa dữ liệu gốc.
+function uniqueSubjectList(rows) {
+  const source = Array.isArray(rows) ? rows : [];
+  const chosen = new Map();
+  source.forEach(function(subject, index) {
+    subject = subject || {};
+    const name = String(subject.name != null ? subject.name : subject.NAME || '').trim();
+    if (!name) return;
+    const key = name.toLocaleLowerCase('vi').replace(/\\s+/g, ' ');
+    const active = isSubjectActiveForList(subject);
+    const previous = chosen.get(key);
+    if (!previous || (active && !previous.active)) {
+      chosen.set(key, {subject: subject, active: active, index: index});
+    }
+  });
+  return Array.from(chosen.values())
+    .sort(function(a, b) { return a.index - b.index; })
+    .map(function(item) { return item.subject; });
+}
+
 function loadApp() {
   setOfflineStatus();
   callServer('getAppData', [], async function(data) {
+    data = Object.assign({}, data, {subjects: uniqueSubjectList(data && data.subjects)});
     appData = data;
     $('subject').innerHTML = '<option value="">-- Chọn môn học --</option>';
     $('qSubject').innerHTML = '';
@@ -2714,7 +2741,7 @@ function loadWordSubjects() {
   if (msg) msg.textContent = '';
 
   callServer('getWordImportSubjects', [adminPassword], function(subjects) {
-    const list = Array.isArray(subjects) ? subjects : [];
+    const list = uniqueSubjectList(Array.isArray(subjects) ? subjects : []);
     sel.innerHTML = '<option value="">-- Chọn môn học --</option>';
     list.forEach(function(s) {
       const op = document.createElement('option');
@@ -2769,10 +2796,13 @@ function loadAdminData() {
       return String(row.NAME || '').trim() !== '';
     });
 
-    adminData = Object.assign({}, data, { subjects: normalizedSubjects });
+    const uniqueAdminSubjects = uniqueSubjectList(normalizedSubjects.map(function(row) {
+      return {ID:row.ID, NAME:row.NAME, ACTIVE:row.ACTIVE};
+    }));
+    adminData = Object.assign({}, data, { subjects: uniqueAdminSubjects });
 
     // Truyền danh sách trực tiếp vào hàm hiển thị.
-    renderSubjects(normalizedSubjects);
+    renderSubjects(uniqueAdminSubjects);
     renderAdminQuestions();
     renderAdminResults();
     renderExams();
@@ -2783,14 +2813,14 @@ function loadAdminData() {
     if ($('settingMinutes')) $('settingMinutes').value = settings.examMinutes == null ? '' : settings.examMinutes;
     if ($('settingPass')) $('settingPass').value = settings.passScore == null ? '' : settings.passScore;
 
-    console.log('[E104A] Đã nhận và hiển thị môn học:', normalizedSubjects.length, normalizedSubjects);
-    if (subjectStatus && normalizedSubjects.length) {
-      const activeCount = normalizedSubjects.filter(function(item) {
+    console.log('[E104A] Đã nhận và hiển thị môn học:', uniqueAdminSubjects.length, uniqueAdminSubjects);
+    if (subjectStatus && uniqueAdminSubjects.length) {
+      const activeCount = uniqueAdminSubjects.filter(function(item) {
         return !['FALSE', '0', 'NO', 'KHÓA', 'KHOA', 'INACTIVE'].includes(String(item.ACTIVE).trim().toUpperCase());
       }).length;
-      subjectStatus.textContent = 'Tổng số: ' + normalizedSubjects.length +
+      subjectStatus.textContent = 'Tổng số: ' + uniqueAdminSubjects.length +
         ' môn học • Đang hoạt động: ' + activeCount +
-        ' • Đã khóa: ' + (normalizedSubjects.length - activeCount);
+        ' • Đã khóa: ' + (uniqueAdminSubjects.length - activeCount);
     } else if (subjectStatus) {
       subjectStatus.textContent = 'Máy chủ trả về 0 môn học. Hãy kiểm tra dữ liệu SUBJECTS.';
     }
