@@ -1825,18 +1825,31 @@ async function getSavedDrafts() {
   });
 }
 async function saveCompletedAttempt(result) {
-  if (!result || !Array.isArray(result.details)) return;
-  const attemptKey = [getStudentCode(), result.subject || '', result.mode || '', Date.now()].join('|');
-  const record = {attemptKey:attemptKey, studentCode:getStudentCode(), result:result, savedAt:new Date().toISOString()};
+  if (!result || typeof result !== 'object') return false;
+  // Không phụ thuộc máy chủ có trả đủ mảng chi tiết hay không:
+  // mọi lượt đã nộp (luyện tập/kiểm tra) đều phải được ghi vào lịch sử trên thiết bị.
+  const normalized = Object.assign({}, result, {
+    subject: result.subject || (quizData && quizData.subject) || '',
+    mode: result.mode || (quizData && quizData.mode) || '',
+    name: result.name || (quizData && quizData.name) || getStudentCode(),
+    details: Array.isArray(result.details) ? result.details : []
+  });
+  const attemptKey = [getStudentCode(), normalized.subject, normalized.mode, normalized.sessionId || (quizData && quizData.sessionId) || Date.now()].join('|');
+  const record = {attemptKey:attemptKey, studentCode:getStudentCode(), result:normalized, savedAt:new Date().toISOString()};
   try {
     const db = await openOfflineDB();
     await new Promise((resolve,reject) => {
       const tx = db.transaction('completed','readwrite');
       tx.objectStore('completed').put(record);
       tx.oncomplete = () => resolve(true);
-      tx.onerror = () => reject(tx.error);
+      tx.onerror = () => reject(tx.error || new Error('Không ghi được lịch sử'));
+      tx.onabort = () => reject(tx.error || new Error('Giao dịch lưu lịch sử bị hủy'));
     });
-  } catch (e) { console.warn('Không lưu được chi tiết lượt làm:', e); }
+    return true;
+  } catch (e) {
+    console.error('Không lưu được lịch sử lượt làm:', e);
+    return false;
+  }
 }
 async function getCompletedAttempts() {
   const db = await openOfflineDB();
@@ -2485,7 +2498,12 @@ function showResult(data) {
   }
 
   clearInterval(timerInterval);
-  saveCompletedAttempt(data);
+  // Bổ sung thông tin phiên hiện tại trước khi lưu để cả bài kiểm tra và luyện tập
+  // đều được ghi lịch sử, kể cả khi phản hồi máy chủ thiếu subject/mode.
+  data.subject = data.subject || (quizData && quizData.subject) || '';
+  data.mode = data.mode || (quizData && quizData.mode) || '';
+  data.name = data.name || (quizData && quizData.name) || getStudentCode();
+  await saveCompletedAttempt(data);
   clearInterval(draftSaveTimer);
   if (activeDraftKey) deleteSavedDraft(activeDraftKey).catch(console.warn);
   activeDraftKey = '';
