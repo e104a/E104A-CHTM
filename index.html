@@ -1153,13 +1153,11 @@ body {
 #quiz .option.wrong .option-letter {
     background: #c91518 !important;
     color: #ffffff !important;
-}</style>
-
+}
 
 /* E104A offline status */
 #offlineStatus{position:sticky;top:0;z-index:1000;padding:7px 12px;text-align:center;font-weight:700;font-size:13px;background:#e8f5e9;color:#14532d}
 #offlineStatus.offline{background:#fff3cd;color:#805b00}
-
 </style>
 </head>
 <body>
@@ -1862,6 +1860,34 @@ function renderSubjectCards(subjects) {
   });
 }
 
+/* Chuẩn hóa dữ liệu câu hỏi từ API/IndexedDB để tương thích tên trường cũ và mới. */
+function normalizeQuestionRecord(q) {
+  q = q || {};
+  const pick = (...keys) => {
+    for (const key of keys) if (q[key] !== undefined && q[key] !== null) return q[key];
+    return '';
+  };
+  let rawOptions = pick('options','OPTIONS','OPTIONS_JSON','options_json');
+  if (typeof rawOptions === 'string') {
+    try { rawOptions = JSON.parse(rawOptions); } catch (_) { rawOptions = []; }
+  }
+  let options = Array.isArray(rawOptions) ? rawOptions.map((o,i) => ({
+    key: String((o && (o.key || o.KEY || o.letter)) || String.fromCharCode(65+i)).trim().toUpperCase(),
+    text: String((o && (o.text ?? o.TEXT ?? o.value)) ?? '').trim()
+  })).filter(o => o.text) : [];
+  if (!options.length) {
+    options = ['A','B','C','D'].map(k => ({key:k,text:String(pick(k,k.toLowerCase())).trim()})).filter(o=>o.text);
+  }
+  return {
+    id: String(pick('id','ID','questionId','QUESTION_ID')),
+    subject: String(pick('subject','SUBJECT','subjectName','SUBJECT_NAME')).trim(),
+    question: String(pick('question','QUESTION','content','CONTENT','text','TEXT')).trim(),
+    options: options,
+    correct: String(pick('correct','CORRECT','answer','ANSWER','correctAnswer','CORRECT_ANSWER')).trim().toUpperCase(),
+    explanation: String(pick('explanation','EXPLANATION','explain','EXPLAIN')).trim()
+  };
+}
+
 /* BẮT ĐẦU BÀI THEO MÔN ĐƯỢC CHỌN */
 function startQuiz(subjectOverride, modeOverride) {
   const name=getStudentCode();
@@ -1873,6 +1899,10 @@ function startQuiz(subjectOverride, modeOverride) {
   $('homeMessage').textContent=mode==='exam'?'Đang tạo bài thi...':'Đang tải câu hỏi...';
   const begin=function(data,isOffline){
     offlineModeActive=!!isOffline;
+    data = data || {};
+    data.questions = Array.isArray(data.questions) ? data.questions.map(normalizeQuestionRecord) : [];
+    data.total = data.questions.length;
+    if (!data.questions.length) { $('homeMessage').textContent='Máy chủ đã trả về bài làm nhưng không có dữ liệu câu hỏi. Vui lòng kiểm tra ngân hàng câu hỏi và triển khai Apps Script.'; return; }
     quizData=data; answers={}; marked={}; currentIndex=0; quizSubmitting=false;
     $('homeMessage').textContent='';
     $('quizSubject').textContent=data.subject;
@@ -1898,7 +1928,8 @@ function startQuiz(subjectOverride, modeOverride) {
   }
 }
 function makeOfflineQuiz(bundle,name,subject,mode,count) {
-  let qs=bundle.questions.filter(q=>q.subject===subject);
+  const target = String(subject || '').trim().toLocaleLowerCase('vi');
+  let qs=(bundle.questions || []).map(normalizeQuestionRecord).filter(q=>q.subject.trim().toLocaleLowerCase('vi')===target);
   if(!qs.length) throw new Error('Chưa có câu hỏi ngoại tuyến cho môn '+subject+'.');
   if(mode==='exam') {
     qs=qs.slice().sort(()=>Math.random()-0.5).slice(0,Math.min(count||bundle.examCount||30,qs.length));
@@ -1940,6 +1971,12 @@ function renderQuestion() {
   if (!quizData) return;
 
   const q = quizData.questions[currentIndex];
+  if (!q || !q.question) {
+    $('questionText').textContent = 'Không đọc được nội dung câu hỏi. Dữ liệu trả về không đúng định dạng.';
+    $('options').innerHTML = '';
+    console.error('E104A: dữ liệu câu hỏi không hợp lệ', q);
+    return;
+  }
   const mode = quizData.mode;
 
   $('currentNumber').textContent = currentIndex + 1;
