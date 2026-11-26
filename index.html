@@ -1637,6 +1637,20 @@ function showSection(id) {
     $(name).classList.toggle('hidden', name !== id);
   });
 
+  // Luôn mở vùng nội dung câu hỏi khi chuyển sang màn hình làm bài.
+  // Tránh trường hợp dữ liệu đã có và renderQuestion() chạy nhưng
+  // quizContent vẫn giữ class hidden từ trạng thái HTML ban đầu.
+  if (id === 'quiz') {
+    const quizContent = $('quizContent');
+    const quizLoading = $('quizLoading');
+    if (quizContent) {
+      quizContent.classList.remove('hidden');
+      quizContent.style.removeProperty('display');
+      quizContent.setAttribute('aria-hidden', 'false');
+    }
+    if (quizLoading) quizLoading.style.display = 'none';
+  }
+
   window.scrollTo(0, 0);
 }
 
@@ -1913,7 +1927,10 @@ function startQuiz(subjectOverride, modeOverride) {
     $('quizLoading').style.display='none';
     $('quizContent').classList.remove('hidden');
     if(data.mode==='exam'){remainingSeconds=data.minutes*60;updateTimer();clearInterval(timerInterval);timerInterval=setInterval(tickTimer,1000);}else clearInterval(timerInterval);
-    showSection('quiz'); renderQuestion();
+    showSection('quiz');
+    $('quizContent').classList.remove('hidden');
+    $('quizContent').style.removeProperty('display');
+    renderQuestion();
   };
   if(navigator.onLine){
     callServer('startQuiz',[{name:name,subject:subject,mode:mode,count:count,examId:''}],function(data){
