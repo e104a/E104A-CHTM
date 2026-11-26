@@ -3433,9 +3433,32 @@ function confirmWordImportFromPreview() {
     ? 'CHẾ ĐỘ: THAY THẾ TOÀN BỘ.\n\nMôn: ' + subjectName + '\nBộ mới: ' + selected.length + ' câu.\n\nHệ thống sẽ loại câu hỏi cũ của riêng môn này trước khi ghi bộ mới. Các môn khác không bị ảnh hưởng. Thao tác không thể hoàn tác.'
     : 'CHẾ ĐỘ: BỔ SUNG.\n\nThêm ' + selected.length + ' câu hỏi vào ngân hàng môn ' + subjectName + '?';
   if (!confirm(confirmText)) return;
+  const wordMessage = $('wordMessage');
+  if (wordMessage) {
+    wordMessage.textContent = replaceExisting
+      ? 'ĐANG THAY THẾ ngân hàng câu hỏi môn ' + subjectName + '...'
+      : 'ĐANG BỔ SUNG ' + selected.length + ' câu hỏi vào môn ' + subjectName + '...';
+    wordMessage.style.cssText = 'display:block;padding:12px 14px;margin:12px 0;border-radius:8px;background:#eff6ff;border:1px solid #93c5fd;color:#1d4ed8;font-weight:600;';
+  }
   callServer('confirmWordImport', [adminPassword, wordImportToken, selected, replaceExisting], function(msg) {
-    $('wordMessage').textContent=msg; $('wordPreview').innerHTML=''; $('wordFile').value=''; wordImportToken=''; loadAdminData();
-  }, function(err) { $('wordMessage').textContent=err.message || 'Nhập câu hỏi thất bại.'; });
+    if (wordMessage) {
+      wordMessage.textContent = (replaceExisting ? '✓ THAY THẾ THÀNH CÔNG' : '✓ BỔ SUNG THÀNH CÔNG') +
+        ' | Môn: ' + subjectName + ' | Số câu đã xử lý: ' + selected.length +
+        (msg ? ' | ' + msg : '') +
+        (replaceExisting ? ' | Ngân hàng môn này đã được thay bằng bộ câu hỏi mới.' : ' | Câu hỏi cũ được giữ nguyên.');
+      wordMessage.style.cssText = 'display:block;padding:12px 14px;margin:12px 0;border-radius:8px;background:#ecfdf3;border:1px solid #86efac;color:#166534;font-weight:700;line-height:1.6;';
+    }
+    $('wordPreview').innerHTML='';
+    $('wordFile').value='';
+    wordImportToken='';
+    loadAdminData();
+  }, function(err) {
+    if (wordMessage) {
+      wordMessage.textContent = '✕ ' + (replaceExisting ? 'THAY THẾ KHÔNG THÀNH CÔNG' : 'BỔ SUNG KHÔNG THÀNH CÔNG') +
+        ': ' + ((err && err.message) || 'Nhập câu hỏi thất bại. Ngân hàng cũ được giữ nguyên nếu thao tác chưa hoàn tất.');
+      wordMessage.style.cssText = 'display:block;padding:12px 14px;margin:12px 0;border-radius:8px;background:#fef2f2;border:1px solid #fca5a5;color:#b91c1c;font-weight:700;line-height:1.6;';
+    }
+  });
 }
 
 /* NHẬP EXCEL */
