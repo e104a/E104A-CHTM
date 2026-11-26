@@ -1909,6 +1909,9 @@ function startQuiz(subjectOverride, modeOverride) {
     $('quizInfo').textContent=data.name+' | '+(data.mode==='practice'?'Luyện tập':'Thi kiểm tra ngẫu nhiên 30 câu')+(isOffline?' | NGOẠI TUYẾN':'');
     $('totalNumber').textContent=data.total;
     $('timerBox').classList.toggle('hidden',data.mode!=='exam');
+    // Bảo đảm vùng chứa câu hỏi được mở trước khi render.
+    $('quizLoading').style.display='none';
+    $('quizContent').classList.remove('hidden');
     if(data.mode==='exam'){remainingSeconds=data.minutes*60;updateTimer();clearInterval(timerInterval);timerInterval=setInterval(tickTimer,1000);}else clearInterval(timerInterval);
     showSection('quiz'); renderQuestion();
   };
