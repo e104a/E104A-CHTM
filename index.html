@@ -2369,59 +2369,42 @@ async function finishOfflineAttempt() {
 function showResult(data) {
   data = data || {};
 
-  // Ghép kết quả máy chủ với toàn bộ câu hỏi của phiên đang làm.
-  // Tránh trường hợp API trả thiếu một phần details khiến màn hình kết quả
-  // chỉ hiện một số câu, trong khi quizData vẫn còn đầy đủ ngân hàng của lượt làm.
+  // CHỈ BỔ SUNG DỮ LIỆU CHO PHẦN XEM LẠI:
+  // Dùng danh sách câu hỏi gốc của lượt làm để bảo đảm không thiếu câu.
+  // Giữ nguyên phần dựng giao diện kết quả hiện có bên dưới.
   const sourceQuestions = quizData && Array.isArray(quizData.questions)
     ? quizData.questions : [];
   const returnedDetails = Array.isArray(data.details) ? data.details : [];
-  const detailById = new Map();
-  returnedDetails.forEach(function(d, index) {
-    const id = String(d && (d.questionId || d.id) || '');
-    if (id) detailById.set(id, d);
-    if (index < sourceQuestions.length && !detailById.has('__INDEX_' + index)) {
-      detailById.set('__INDEX_' + index, d);
-    }
+  const detailsById = Object.create(null);
+  returnedDetails.forEach(function(item) {
+    const id = String(item && (item.questionId || item.id) || '');
+    if (id) detailsById[id] = item;
   });
 
-  let completeDetails;
   if (sourceQuestions.length) {
-    completeDetails = sourceQuestions.map(function(q, index) {
-      const serverDetail = detailById.get(String(q.id)) ||
-        detailById.get('__INDEX_' + index) || returnedDetails[index] || {};
-      const selected = String(serverDetail.selected || (answers && answers[q.id]) || '').toUpperCase();
-      const correct = String(serverDetail.correct || q.correct || '').toUpperCase();
-      const options = Array.isArray(serverDetail.options) && serverDetail.options.length
-        ? serverDetail.options
+    data.details = sourceQuestions.map(function(q, index) {
+      const serverItem = detailsById[String(q.id)] || returnedDetails[index] || {};
+      const selected = String(serverItem.selected || (answers && answers[q.id]) || '').toUpperCase();
+      const correct = String(serverItem.correct || q.correct || '').toUpperCase();
+      const options = Array.isArray(serverItem.options) && serverItem.options.length
+        ? serverItem.options
         : (Array.isArray(q.options) ? q.options : []);
-      const isCorrect = typeof serverDetail.isCorrect === 'boolean'
-        ? serverDetail.isCorrect
-        : (!!correct && selected === correct);
       return {
-        questionId: serverDetail.questionId || q.id,
-        question: serverDetail.question || q.question || '',
+        questionId: q.id,
+        question: serverItem.question || q.question || '',
         options: options,
         selected: selected,
+        selectedText: serverItem.selectedText || '',
         correct: correct,
-        isCorrect: isCorrect,
-        explanation: serverDetail.explanation || q.explanation || ''
+        correctText: serverItem.correctText || '',
+        isCorrect: typeof serverItem.isCorrect === 'boolean'
+          ? serverItem.isCorrect : (!!correct && selected === correct)
       };
     });
+    data.total = sourceQuestions.length;
   } else {
-    completeDetails = returnedDetails;
+    data.details = returnedDetails;
   }
-
-  data.details = completeDetails;
-  if (sourceQuestions.length) data.total = sourceQuestions.length;
-  data.correct = Number.isFinite(Number(data.correct))
-    ? Number(data.correct)
-    : completeDetails.filter(function(d) { return d.isCorrect; }).length;
-  data.wrong = Number.isFinite(Number(data.wrong))
-    ? Number(data.wrong)
-    : completeDetails.filter(function(d) { return d.selected && !d.isCorrect; }).length;
-  data.unanswered = Number.isFinite(Number(data.unanswered))
-    ? Number(data.unanswered)
-    : completeDetails.filter(function(d) { return !d.selected; }).length;
 
   clearInterval(timerInterval);
   saveCompletedAttempt(data);
@@ -2429,63 +2412,56 @@ function showResult(data) {
   if (activeDraftKey) deleteSavedDraft(activeDraftKey).catch(console.warn);
   activeDraftKey = '';
 
-  $('resultName').textContent = (data.name || '') + ' | ' + (data.subject || '');
-  $('resultScore').textContent = Number(data.score || 0).toFixed(2);
-  $('resultStatus').textContent = data.pass ? 'ĐẠT' : 'CHƯA ĐẠT';
-  $('resultStatus').style.color = data.pass ? '#16834b' : '#d83b42';
-  $('resultTotal').textContent = data.total || completeDetails.length;
+  $('resultName').textContent =
+    data.name + ' | ' + data.subject;
+
+  $('resultScore').textContent =
+    Number(data.score).toFixed(2);
+
+  $('resultStatus').textContent =
+    data.pass ? 'ĐẠT' : 'CHƯA ĐẠT';
+
+  $('resultStatus').style.color =
+    data.pass ? '#16834b' : '#d83b42';
+
+  $('resultTotal').textContent = data.total;
   $('resultCorrect').textContent = data.correct;
   $('resultWrong').textContent = data.wrong;
   $('resultUnanswered').textContent = data.unanswered;
 
   if (data.syncMessage) {
     let syncBox = $('offlineSyncMessage');
-    if (!syncBox) {
-      syncBox = document.createElement('div');
-      syncBox.id = 'offlineSyncMessage';
-      syncBox.className = 'message';
-      $('resultDetails').parentNode.insertBefore(syncBox, $('resultDetails'));
-    }
-    syncBox.textContent = data.syncMessage;
+    if (!syncBox) { syncBox=document.createElement('div'); syncBox.id='offlineSyncMessage'; syncBox.className='message'; $('resultDetails').parentNode.insertBefore(syncBox,$('resultDetails')); }
+    syncBox.textContent=data.syncMessage;
   }
-
   const details = $('resultDetails');
   details.innerHTML = '';
-  const countNote = document.createElement('p');
-  countNote.style.cssText = 'font-weight:700;color:#07543f;margin:8px 0 14px;';
-  countNote.textContent = 'Đang hiển thị đầy đủ ' + completeDetails.length + '/' +
-    (data.total || completeDetails.length) + ' câu hỏi của lượt làm.';
-  details.appendChild(countNote);
 
-  completeDetails.forEach(function(d, index) {
+  data.details.forEach((d, index) => {
     const div = document.createElement('div');
     div.className = 'detail-row';
 
     const heading = document.createElement('div');
     heading.style.cssText = 'font-weight:800;color:#07513d;margin-bottom:8px;';
-    heading.textContent = 'Câu ' + (index + 1) + ': ' +
-      (d.isCorrect ? 'ĐÚNG' : (d.selected ? 'SAI' : 'CHƯA TRẢ LỜI'));
+    heading.textContent = 'Câu ' + (index + 1) + ': ' + (d.isCorrect ? 'ĐÚNG' : (d.selected ? 'SAI' : 'CHƯA TRẢ LỜI'));
     heading.style.color = d.isCorrect ? '#16834b' : '#c91518';
     div.appendChild(heading);
 
     const question = document.createElement('div');
     question.style.cssText = 'font-weight:650;white-space:pre-wrap;margin-bottom:10px;';
-    question.textContent = d.question || '(Không có nội dung câu hỏi trong dữ liệu trả về)';
+    question.textContent = d.question || '';
     div.appendChild(question);
 
     const options = document.createElement('div');
     options.style.cssText = 'display:grid;gap:6px;margin:8px 0 12px;';
-    const optionList = Array.isArray(d.options) && d.options.length
-      ? d.options
-      : ['A','B','C','D'].map(function(k) { return {key:k,text:d[k] || ''}; })
-          .filter(function(o) { return String(o.text || '').trim(); });
-    optionList.forEach(function(option) {
+    (Array.isArray(d.options) && d.options.length ? d.options : ['A','B','C','D'].map(function(k){ return {key:k,text:d[k] || ''}; }).filter(function(o){ return String(o.text || '').trim(); })).forEach(function(option) {
       const line = document.createElement('div');
       const key = String(option.key || '').toUpperCase();
       const isCorrectOption = key === String(d.correct || '').toUpperCase();
       const isSelectedOption = key === String(d.selected || '').toUpperCase();
       line.style.cssText = 'padding:8px 10px;border-radius:7px;white-space:pre-wrap;';
       line.textContent = key + '. ' + String(option.text || '');
+
       if (isCorrectOption) {
         line.style.background = '#e6f5eb';
         line.style.border = '1px solid #16834b';
@@ -2508,20 +2484,16 @@ function showResult(data) {
 
     const yourAnswer = document.createElement('div');
     yourAnswer.style.cssText = 'margin-top:6px;';
-    yourAnswer.textContent = 'Bạn chọn: ' + (d.selected || 'Chưa trả lời');
+    yourAnswer.textContent = 'Bạn chọn: ' +
+      (d.selected ? d.selected + (d.selectedText ? '. ' + d.selectedText : '') : 'Chưa trả lời');
     div.appendChild(yourAnswer);
 
     const correctAnswer = document.createElement('div');
     correctAnswer.style.cssText = 'margin-top:5px;font-weight:750;color:#16834b;';
-    correctAnswer.textContent = 'Đáp án đúng: ' + (d.correct || 'Chưa có dữ liệu');
+    correctAnswer.textContent = 'Đáp án đúng: ' + (d.correct || '') +
+      (d.correctText ? '. ' + d.correctText : '');
     div.appendChild(correctAnswer);
 
-    if (d.explanation) {
-      const explanation = document.createElement('div');
-      explanation.style.cssText = 'margin-top:10px;padding:10px;background:#f0f8f2;border-left:3px solid #16834b;white-space:pre-wrap;';
-      explanation.textContent = 'Giải thích: ' + d.explanation;
-      div.appendChild(explanation);
-    }
     details.appendChild(div);
   });
 
