@@ -1683,9 +1683,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
 /* ===== E104A OFFLINE STORAGE ===== */
 const OFFLINE_DB_NAME = 'E104A_OFFLINE_V1';
-const OFFLINE_DB_VERSION = 1;
+const OFFLINE_DB_VERSION = 2;
 let offlineBundle = null;
 let offlineModeActive = false;
+let activeDraftKey = '';
+let draftSaveTimer = null;
 
 function openOfflineDB() {
   return new Promise((resolve, reject) => {
@@ -1694,6 +1696,7 @@ function openOfflineDB() {
       const db = req.result;
       if (!db.objectStoreNames.contains('kv')) db.createObjectStore('kv');
       if (!db.objectStoreNames.contains('attempts')) db.createObjectStore('attempts', {keyPath:'attemptId'});
+      if (!db.objectStoreNames.contains('drafts')) db.createObjectStore('drafts', {keyPath:'draftKey'});
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -1733,6 +1736,99 @@ function setOfflineStatus() {
     ? 'Đang trực tuyến – kết quả sẽ tự động đồng bộ'
     : 'ĐANG NGOẠI TUYẾN – có thể luyện tập và thi thử bằng dữ liệu đã tải';
 }
+async function saveCurrentDraft() {
+  if (!quizData || quizSubmitting || !quizData.questions || !quizData.questions.length) return;
+  const draftKey = activeDraftKey || [getStudentCode(), quizData.subject, quizData.mode, quizData.sessionId || quizData.startedAt || Date.now()].join('|');
+  activeDraftKey = draftKey;
+  const draft = {
+    draftKey: draftKey,
+    studentCode: getStudentCode(),
+    name: quizData.name || getStudentCode(),
+    subject: quizData.subject,
+    mode: quizData.mode,
+    quizData: quizData,
+    answers: answers || {},
+    marked: marked || {},
+    currentIndex: currentIndex || 0,
+    remainingSeconds: remainingSeconds || 0,
+    savedAt: new Date().toISOString(),
+    offline: !!offlineModeActive
+  };
+  try {
+    const db = await openOfflineDB();
+    await new Promise((resolve,reject) => {
+      const tx = db.transaction('drafts','readwrite');
+      tx.objectStore('drafts').put(draft);
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch (e) { console.warn('Không lưu được tiến độ bài làm:', e); }
+}
+async function getSavedDrafts() {
+  const db = await openOfflineDB();
+  return new Promise((resolve,reject) => {
+    const req = db.transaction('drafts','readonly').objectStore('drafts').getAll();
+    req.onsuccess = () => resolve((req.result || []).filter(x => x.studentCode === getStudentCode()).sort((a,b) => String(b.savedAt).localeCompare(String(a.savedAt))));
+    req.onerror = () => reject(req.error);
+  });
+}
+async function deleteSavedDraft(key) {
+  if (!key) return;
+  const db = await openOfflineDB();
+  return new Promise((resolve,reject) => {
+    const tx = db.transaction('drafts','readwrite');
+    tx.objectStore('drafts').delete(key);
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+async function resumeSavedDraft(key) {
+  let draft;
+  try {
+    const db = await openOfflineDB();
+    draft = await new Promise((resolve,reject) => {
+      const req = db.transaction('drafts','readonly').objectStore('drafts').get(key);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  } catch (e) { alert('Không đọc được bài làm đã lưu: ' + e.message); return; }
+  if (!draft || !draft.quizData) { alert('Không tìm thấy bài làm đã lưu.'); return; }
+  quizData = draft.quizData;
+  quizData.questions = (quizData.questions || []).map(normalizeQuestionRecord);
+  quizData.total = quizData.questions.length;
+  answers = draft.answers || {};
+  marked = draft.marked || {};
+  currentIndex = Math.max(0, Math.min(Number(draft.currentIndex) || 0, quizData.total - 1));
+  remainingSeconds = Number(draft.remainingSeconds) || 0;
+  activeDraftKey = draft.draftKey;
+  offlineModeActive = !!draft.offline;
+  quizSubmitting = false;
+  $('quizSubject').textContent = quizData.subject;
+  $('quizInfo').textContent = (quizData.name || getStudentCode()) + ' | ' + (quizData.mode === 'practice' ? 'Luyện tập' : 'Thi kiểm tra') + ' | Tiếp tục bài đã lưu';
+  $('totalNumber').textContent = quizData.total;
+  $('timerBox').classList.toggle('hidden', quizData.mode !== 'exam');
+  if (quizData.mode === 'exam') {
+    if (remainingSeconds <= 0) {
+      alert('Bài kiểm tra đã hết thời gian. Hệ thống sẽ chuyển sang nộp bài.');
+      showSection('quiz');
+      renderQuestion();
+      submitCurrentQuiz(true);
+      return;
+    }
+    updateTimer();
+    clearInterval(timerInterval);
+    timerInterval = setInterval(tickTimer, 1000);
+  } else clearInterval(timerInterval);
+  showSection('quiz');
+  renderQuestion();
+}
+function startDraftAutoSave() {
+  clearInterval(draftSaveTimer);
+  draftSaveTimer = setInterval(saveCurrentDraft, 10000);
+}
+window.addEventListener('pagehide', () => { saveCurrentDraft(); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveCurrentDraft(); });
+
 async function queueOfflineAttempt(attempt) {
   const db=await openOfflineDB();
   return new Promise((resolve,reject)=>{
@@ -1932,6 +2028,7 @@ function startQuiz(subjectOverride, modeOverride) {
     data.total = data.questions.length;
     if (!data.questions.length) { $('homeMessage').textContent='Máy chủ đã trả về bài làm nhưng không có dữ liệu câu hỏi. Vui lòng kiểm tra ngân hàng câu hỏi và triển khai Apps Script.'; return; }
     quizData=data; answers={}; marked={}; currentIndex=0; quizSubmitting=false;
+    activeDraftKey = [getStudentCode(), data.subject, data.mode, data.sessionId || data.startedAt || Date.now()].join('|');
     $('homeMessage').textContent='';
     $('quizSubject').textContent=data.subject;
     $('quizInfo').textContent=data.name+' | '+(data.mode==='practice'?'Luyện tập':'Thi kiểm tra ngẫu nhiên 30 câu')+(isOffline?' | NGOẠI TUYẾN':'');
@@ -1945,6 +2042,8 @@ function startQuiz(subjectOverride, modeOverride) {
     $('quizContent').classList.remove('hidden');
     $('quizContent').style.removeProperty('display');
     renderQuestion();
+    startDraftAutoSave();
+    saveCurrentDraft();
   };
   if(navigator.onLine){
     callServer('startQuiz',[{name:name,subject:subject,mode:mode,count:count,examId:''}],function(data){
@@ -1978,6 +2077,7 @@ function makeOfflineQuiz(bundle,name,subject,mode,count) {
 
 function tickTimer() {
   if (quizSubmitting) return;
+  if (quizData && quizData.mode === 'exam' && remainingSeconds % 10 === 0) saveCurrentDraft();
 
   remainingSeconds--;
 
@@ -2073,7 +2173,7 @@ function selectAnswer(letter) {
   if (quizData.mode === 'practice' && answers[q.id]) return;
 
   answers[q.id] = letter;
-
+  saveCurrentDraft();
   renderQuestion();
 }
 
@@ -2097,6 +2197,7 @@ function showExplanation(q) {
 function previousQuestion() {
   if (currentIndex > 0) {
     currentIndex--;
+    saveCurrentDraft();
     renderQuestion();
   }
 }
@@ -2104,12 +2205,14 @@ function previousQuestion() {
 function nextQuestion() {
   if (currentIndex < quizData.total - 1) {
     currentIndex++;
+    saveCurrentDraft();
     renderQuestion();
   }
 }
 
 function goToQuestion(index) {
   currentIndex = index;
+  saveCurrentDraft();
   renderQuestion();
 }
 
@@ -2117,7 +2220,7 @@ function toggleMark() {
   const q = quizData.questions[currentIndex];
 
   marked[q.id] = !marked[q.id];
-
+  saveCurrentDraft();
   renderQuestion();
 }
 
@@ -2197,6 +2300,9 @@ async function finishOfflineAttempt() {
 
 function showResult(data) {
   clearInterval(timerInterval);
+  clearInterval(draftSaveTimer);
+  if (activeDraftKey) deleteSavedDraft(activeDraftKey).catch(console.warn);
+  activeDraftKey = '';
 
   $('resultName').textContent =
     data.name + ' | ' + data.subject;
@@ -2288,38 +2394,84 @@ function showResult(data) {
 
 /* LỊCH SỬ */
 
-function showHistory() {
-  const name = getStudentCode();
+async function showHistory() {
+  const box = $('historyBox');
+  box.innerHTML = '<h3>LỊCH SỬ VÀ BÀI ĐANG LÀM</h3><p>Đang tải dữ liệu...</p>';
+  let drafts = [];
+  try { drafts = await getSavedDrafts(); } catch (e) { console.warn(e); }
+  box.innerHTML = '<h3>LỊCH SỬ VÀ BÀI ĐANG LÀM</h3>';
 
-  callServer('getPublicResults', [name], function(rows) {
-    const box = $('historyBox');
+  if (drafts.length) {
+    const heading = document.createElement('h4');
+    heading.textContent = 'BÀI ĐANG LÀM DỞ';
+    box.appendChild(heading);
+    drafts.forEach(d => {
+      const div = document.createElement('div');
+      div.className = 'detail-row';
+      const answered = Object.keys(d.answers || {}).length;
+      const title = document.createElement('strong');
+      title.textContent = d.subject + ' | ' + (d.mode === 'practice' ? 'Luyện tập' : 'Kiểm tra');
+      const info = document.createElement('p');
+      info.textContent = 'Đã trả lời ' + answered + '/' + (d.quizData.total || d.quizData.questions.length) +
+        ' câu · Lưu lúc ' + new Date(d.savedAt).toLocaleString('vi-VN') +
+        (d.offline ? ' · Ngoại tuyến' : '');
+      const resume = document.createElement('button');
+      resume.type = 'button';
+      resume.className = 'primary-button';
+      resume.style.marginTop = '8px';
+      resume.textContent = 'TIẾP TỤC LÀM BÀI';
+      resume.onclick = () => resumeSavedDraft(d.draftKey);
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'secondary-button';
+      remove.style.marginTop = '8px';
+      remove.style.marginLeft = '8px';
+      remove.textContent = 'XÓA BÀI LƯU';
+      remove.onclick = async () => {
+        if (!confirm('Bạn có chắc chắn muốn xóa bài làm dở này?')) return;
+        await deleteSavedDraft(d.draftKey);
+        showHistory();
+      };
+      div.append(title, info, resume, remove);
+      box.appendChild(div);
+    });
+  } else {
+    const empty = document.createElement('p');
+    empty.textContent = 'Không có bài làm nào đang lưu dở.';
+    box.appendChild(empty);
+  }
 
-    if (!rows.length) {
-      box.textContent = 'Chưa có lịch sử thi.';
+  const completedHeading = document.createElement('h4');
+  completedHeading.textContent = 'CÁC LẦN ĐÃ HOÀN THÀNH';
+  box.appendChild(completedHeading);
+  callServer('getPublicResults', [getStudentCode()], function(rows) {
+    if (!rows || !rows.length) {
+      const empty = document.createElement('p');
+      empty.textContent = 'Chưa có kết quả đã hoàn thành.';
+      box.appendChild(empty);
       return;
     }
-
-    box.innerHTML = '<h3>LỊCH SỬ THI</h3>';
-
     rows.forEach(r => {
       const div = document.createElement('div');
       div.className = 'detail-row';
-
-      div.textContent =
-        r.subject + ' | ' + r.mode +
-        ' | Điểm: ' + r.score +
-        ' | Đúng: ' + r.correct + '/' + r.total +
-        ' | ' + r.submittedAt;
-
+      div.textContent = r.subject + ' | ' + r.mode +
+        ' | Điểm: ' + r.score + ' | Đúng: ' + r.correct + '/' + r.total +
+        ' | ' + (r.submittedAt || '');
       box.appendChild(div);
     });
+  }, function(error) {
+    const msg = document.createElement('p');
+    msg.textContent = 'Không tải được lịch sử đã hoàn thành: ' + (error.message || 'Lỗi kết nối');
+    box.appendChild(msg);
   });
 }
 
 /* QUAY LẠI */
 
 function backHome() {
+  if (quizData && !quizSubmitting) saveCurrentDraft();
   clearInterval(timerInterval);
+  clearInterval(draftSaveTimer);
   quizData = null;
   quizSubmitting = false;
   showSection('home');
