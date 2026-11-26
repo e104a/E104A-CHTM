@@ -1697,6 +1697,7 @@ function openOfflineDB() {
       if (!db.objectStoreNames.contains('kv')) db.createObjectStore('kv');
       if (!db.objectStoreNames.contains('attempts')) db.createObjectStore('attempts', {keyPath:'attemptId'});
       if (!db.objectStoreNames.contains('drafts')) db.createObjectStore('drafts', {keyPath:'draftKey'});
+      if (!db.objectStoreNames.contains('completed')) db.createObjectStore('completed', {keyPath:'attemptKey'});
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -1768,6 +1769,28 @@ async function getSavedDrafts() {
   const db = await openOfflineDB();
   return new Promise((resolve,reject) => {
     const req = db.transaction('drafts','readonly').objectStore('drafts').getAll();
+    req.onsuccess = () => resolve((req.result || []).filter(x => x.studentCode === getStudentCode()).sort((a,b) => String(b.savedAt).localeCompare(String(a.savedAt))));
+    req.onerror = () => reject(req.error);
+  });
+}
+async function saveCompletedAttempt(result) {
+  if (!result || !Array.isArray(result.details)) return;
+  const attemptKey = [getStudentCode(), result.subject || '', result.mode || '', Date.now()].join('|');
+  const record = {attemptKey:attemptKey, studentCode:getStudentCode(), result:result, savedAt:new Date().toISOString()};
+  try {
+    const db = await openOfflineDB();
+    await new Promise((resolve,reject) => {
+      const tx = db.transaction('completed','readwrite');
+      tx.objectStore('completed').put(record);
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch (e) { console.warn('Không lưu được chi tiết lượt làm:', e); }
+}
+async function getCompletedAttempts() {
+  const db = await openOfflineDB();
+  return new Promise((resolve,reject) => {
+    const req = db.transaction('completed','readonly').objectStore('completed').getAll();
     req.onsuccess = () => resolve((req.result || []).filter(x => x.studentCode === getStudentCode()).sort((a,b) => String(b.savedAt).localeCompare(String(a.savedAt))));
     req.onerror = () => reject(req.error);
   });
@@ -2300,6 +2323,7 @@ async function finishOfflineAttempt() {
 
 function showResult(data) {
   clearInterval(timerInterval);
+  saveCompletedAttempt(data);
   clearInterval(draftSaveTimer);
   if (activeDraftKey) deleteSavedDraft(activeDraftKey).catch(console.warn);
   activeDraftKey = '';
@@ -2442,8 +2466,27 @@ async function showHistory() {
   }
 
   const completedHeading = document.createElement('h4');
-  completedHeading.textContent = 'CÁC LẦN ĐÃ HOÀN THÀNH';
+  completedHeading.textContent = 'CÁC LẦN ĐÃ HOÀN THÀNH (CÓ THỂ XEM LẠI CHI TIẾT TRÊN THIẾT BỊ NÀY)';
   box.appendChild(completedHeading);
+  getCompletedAttempts().then(items => {
+    items.forEach(item => {
+      const result = item.result || {};
+      const div = document.createElement('div');
+      div.className = 'detail-row';
+      const info = document.createElement('div');
+      info.textContent = (result.subject || '') + ' | ' + (result.mode || '') +
+        ' | Điểm: ' + result.score + ' | Đúng: ' + result.correct + '/' + result.total +
+        ' | ' + new Date(item.savedAt).toLocaleString('vi-VN');
+      const review = document.createElement('button');
+      review.type = 'button';
+      review.className = 'secondary-button';
+      review.style.marginTop = '8px';
+      review.textContent = 'XEM LẠI BÀI ĐÃ LÀM';
+      review.onclick = () => showResult(result);
+      div.append(info, review);
+      box.appendChild(div);
+    });
+  }).catch(e => console.warn('Không tải được chi tiết lịch sử trên thiết bị:', e));
   callServer('getPublicResults', [getStudentCode()], function(rows) {
     if (!rows || !rows.length) {
       const empty = document.createElement('p');
