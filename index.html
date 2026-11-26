@@ -2656,45 +2656,88 @@ async function showHistory() {
   }
 
   const completedHeading = document.createElement('h4');
-  completedHeading.textContent = 'CÁC LẦN ĐÃ HOÀN THÀNH (CÓ THỂ XEM LẠI CHI TIẾT TRÊN THIẾT BỊ NÀY)';
+  completedHeading.textContent = 'CÁC LẦN ĐÃ HOÀN THÀNH (MỚI NHẤT XẾP TRƯỚC)';
   box.appendChild(completedHeading);
-  getCompletedAttempts().then(items => {
-    items.forEach(item => {
-      const result = item.result || {};
-      const div = document.createElement('div');
-      div.className = 'detail-row';
-      const info = document.createElement('div');
-      info.textContent = (result.subject || '') + ' | ' + (result.mode || '') +
-        ' | Điểm: ' + result.score + ' | Đúng: ' + result.correct + '/' + result.total +
-        ' | ' + new Date(item.savedAt).toLocaleString('vi-VN');
-      const review = document.createElement('button');
-      review.type = 'button';
-      review.className = 'secondary-button';
-      review.style.marginTop = '8px';
-      review.textContent = 'XEM LẠI BÀI ĐÃ LÀM';
-      review.onclick = () => showResult(result);
-      div.append(info, review);
-      box.appendChild(div);
-    });
-  }).catch(e => console.warn('Không tải được chi tiết lịch sử trên thiết bị:', e));
+
+  // Gộp lịch sử trên thiết bị và máy chủ rồi sắp xếp chung theo thời gian.
+  const completedItems = [];
+  try {
+    const localItems = await getCompletedAttempts();
+    localItems.forEach(item => completedItems.push({
+      source: 'local',
+      result: item.result || {},
+      timestamp: item.savedAt || (item.result && item.result.submittedAt) || '',
+      savedAt: item.savedAt || ''
+    }));
+  } catch (e) {
+    console.warn('Không tải được lịch sử trên thiết bị:', e);
+  }
+
+  const timeValue = value => {
+    if (typeof value === 'number') return value < 1000000000000 ? value * 1000 : value;
+    const raw = String(value || '');
+    const parsed = Date.parse(raw);
+    if (Number.isFinite(parsed)) return parsed;
+    const vn = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(.*)$/);
+    return vn ? (Date.parse(vn[2] + '/' + vn[1] + '/' + vn[3] + vn[4]) || 0) : 0;
+  };
+
   callServer('getPublicResults', [getStudentCode()], function(rows) {
-    if (!rows || !rows.length) {
+    (rows || []).forEach(r => completedItems.push({
+      source: 'server',
+      result: r || {},
+      timestamp: r.submittedAt || r.createdAt || r.timestamp || '',
+      savedAt: r.submittedAt || r.createdAt || r.timestamp || ''
+    }));
+    completedItems.sort((a,b) => timeValue(b.timestamp) - timeValue(a.timestamp));
+
+    if (!completedItems.length) {
       const empty = document.createElement('p');
       empty.textContent = 'Chưa có kết quả đã hoàn thành.';
       box.appendChild(empty);
       return;
     }
-    rows.forEach(r => {
+
+    completedItems.forEach(item => {
+      const result = item.result || {};
       const div = document.createElement('div');
       div.className = 'detail-row';
-      div.textContent = r.subject + ' | ' + r.mode +
-        ' | Điểm: ' + r.score + ' | Đúng: ' + r.correct + '/' + r.total +
-        ' | ' + (r.submittedAt || '');
+      const info = document.createElement('div');
+      const modeLabel = result.mode === 'practice' || result.mode === 'Luyện tập'
+        ? 'Luyện tập' : (result.mode === 'exam' || result.mode === 'Kiểm tra' ? 'Kiểm tra' : (result.mode || ''));
+      const dateText = timeValue(item.savedAt) ? new Date(timeValue(item.savedAt)).toLocaleString('vi-VN') : 'Không rõ thời gian';
+      info.textContent = (result.subject || '') + ' | ' + modeLabel +
+        ' | Điểm: ' + (result.score == null ? '' : result.score) +
+        ' | Đúng: ' + (result.correct == null ? '' : result.correct) + '/' + (result.total == null ? '' : result.total) +
+        ' | ' + dateText;
+      div.appendChild(info);
+
+      if (item.source === 'local' && Array.isArray(result.details) && result.details.length) {
+        const review = document.createElement('button');
+        review.type = 'button';
+        review.className = 'secondary-button';
+        review.style.marginTop = '8px';
+        review.textContent = 'XEM LẠI BÀI ĐÃ LÀM';
+        review.onclick = () => showResult(result);
+        div.appendChild(review);
+      }
       box.appendChild(div);
     });
   }, function(error) {
+    completedItems.sort((a,b) => timeValue(b.timestamp) - timeValue(a.timestamp));
+    completedItems.forEach(item => {
+      const result = item.result || {};
+      const div = document.createElement('div');
+      div.className = 'detail-row';
+      div.textContent = (result.subject || '') + ' | ' +
+        (result.mode === 'practice' ? 'Luyện tập' : 'Kiểm tra') +
+        ' | Điểm: ' + (result.score == null ? '' : result.score) +
+        ' | Đúng: ' + (result.correct == null ? '' : result.correct) + '/' + (result.total == null ? '' : result.total) +
+        ' | ' + (timeValue(item.savedAt) ? new Date(timeValue(item.savedAt)).toLocaleString('vi-VN') : 'Không rõ thời gian');
+      box.appendChild(div);
+    });
     const msg = document.createElement('p');
-    msg.textContent = 'Không tải được lịch sử đã hoàn thành: ' + (error.message || 'Lỗi kết nối');
+    msg.textContent = 'Không tải được lịch sử từ máy chủ: ' + (error.message || 'Lỗi kết nối');
     box.appendChild(msg);
   });
 }
