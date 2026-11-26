@@ -883,24 +883,7 @@ body {
   border-radius:10px !important; background:linear-gradient(110deg,#e8f7ec,#f8fff8) !important;
   color:#17442e !important; padding:17px !important;
 }
-#quiz .question-actions {
-  margin-top: 0 !important;
-  margin-bottom: 18px !important;
-}
-#quiz .question-actions-top {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  flex-wrap: nowrap !important;
-  gap: 10px !important;
-}
-#quiz .question-actions-top button {
-  flex: 1 1 0 !important;
-  min-width: 0 !important;
-  min-height: 44px !important;
-  touch-action: manipulation;
-  white-space: nowrap;
-}
+#quiz .question-actions { margin-top:22px !important; }
 #quiz .question-actions button, #quiz .submit-area button {
   min-height:44px !important; border-radius:11px !important; font-size:15px !important;
   box-shadow:0 3px 6px #162d201c !important;
@@ -1037,18 +1020,8 @@ body {
   #quiz .quiz-top { align-items:flex-start !important; flex-direction:column !important; }
   #quiz .question-main { padding:12px !important; }
   #quiz .question-nav { grid-template-columns:repeat(6,minmax(0,1fr)) !important; }
-  #quiz .question-actions {
-    display: flex !important;
-    flex-wrap: nowrap !important;
-    gap: 6px !important;
-  }
-  #quiz .question-actions-top button {
-    flex: 1 1 0 !important;
-    min-width: 0 !important;
-    padding: 10px 6px !important;
-    font-size: 12px !important;
-    white-space: nowrap !important;
-  }
+  #quiz .question-actions { display:grid !important; grid-template-columns:1fr 1fr !important; }
+  #quiz .question-actions button:last-child { grid-column:1/-1 !important; }
   #quiz .submit-area { align-items:stretch !important; flex-direction:column !important; }
   #result .stats-grid { gap:8px !important; }
   #result .stat-card { padding:13px 6px !important; }
@@ -1182,9 +1155,15 @@ body {
     color: #ffffff !important;
 }</style>
 
+
+/* E104A offline status */
+#offlineStatus{position:sticky;top:0;z-index:1000;padding:7px 12px;text-align:center;font-weight:700;font-size:13px;background:#e8f5e9;color:#14532d}
+#offlineStatus.offline{background:#fff3cd;color:#805b00}
+
 </style>
 </head>
 <body>
+<div id="offlineStatus" role="status">Đang kiểm tra kết nối…</div>
 
 <header class="header military-header">
   <div class="military-banner">
@@ -1284,7 +1263,13 @@ body {
           / <span id="totalNumber">0</span>
         </div>
 
-        <div class="question-actions question-actions-top">
+        <div id="questionText" class="question-text"></div>
+
+        <div id="options" class="options"></div>
+
+        <div id="explanation" class="explanation hidden"></div>
+
+        <div class="question-actions">
           <button class="secondary-button" onclick="previousQuestion()">
             ← Câu trước
           </button>
@@ -1298,12 +1283,6 @@ body {
             Câu tiếp →
           </button>
         </div>
-
-        <div id="questionText" class="question-text"></div>
-
-        <div id="options" class="options"></div>
-
-        <div id="explanation" class="explanation hidden"></div>
       </div>
 
       <aside class="question-sidebar">
@@ -1675,41 +1654,132 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
-function loadApp() {
-  callServer('getAppData', [], function(data) {
-    appData = data;
 
+/* ===== E104A OFFLINE STORAGE ===== */
+const OFFLINE_DB_NAME = 'E104A_OFFLINE_V1';
+const OFFLINE_DB_VERSION = 1;
+let offlineBundle = null;
+let offlineModeActive = false;
 
-    $('subject').innerHTML =
-      '<option value="">-- Chọn môn học --</option>';
-
-    $('qSubject').innerHTML = '';
-
-    data.subjects.forEach(s => {
-      const option = document.createElement('option');
-      option.value = s.name;
-      option.textContent = s.name;
-      $('subject').appendChild(option);
-
-      const option2 = document.createElement('option');
-      option2.value = s.name;
-      option2.textContent = s.name;
-      $('qSubject').appendChild(option2);
+function openOfflineDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(OFFLINE_DB_NAME, OFFLINE_DB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains('kv')) db.createObjectStore('kv');
+      if (!db.objectStoreNames.contains('attempts')) db.createObjectStore('attempts', {keyPath:'attemptId'});
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function offlineGet(key) {
+  const db = await openOfflineDB();
+  return new Promise((resolve,reject) => {
+    const req=db.transaction('kv','readonly').objectStore('kv').get(key);
+    req.onsuccess=()=>resolve(req.result || null); req.onerror=()=>reject(req.error);
+  });
+}
+async function offlinePut(key,value) {
+  const db=await openOfflineDB();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction('kv','readwrite'); tx.objectStore('kv').put(value,key);
+    tx.oncomplete=()=>resolve(true); tx.onerror=()=>reject(tx.error);
+  });
+}
+async function saveOfflineBundle(bundle) {
+  if (!bundle || !Array.isArray(bundle.questions)) return;
+  offlineBundle=bundle;
+  await offlinePut('bundle',bundle);
+  const el=document.getElementById('offlineStatus');
+  if(el) el.textContent='✓ Đã tải '+bundle.questionCount+' câu hỏi của '+bundle.subjects.length+' môn học để sử dụng ngoại tuyến';
+}
+async function loadOfflineBundle() {
+  if (offlineBundle) return offlineBundle;
+  offlineBundle=await offlineGet('bundle');
+  return offlineBundle;
+}
+function setOfflineStatus() {
+  const el=document.getElementById('offlineStatus');
+  if(!el) return;
+  el.classList.toggle('offline',!navigator.onLine);
+  el.textContent=navigator.onLine
+    ? 'Đang trực tuyến – kết quả sẽ tự động đồng bộ'
+    : 'ĐANG NGOẠI TUYẾN – có thể luyện tập và thi thử bằng dữ liệu đã tải';
+}
+async function queueOfflineAttempt(attempt) {
+  const db=await openOfflineDB();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction('attempts','readwrite');
+    tx.objectStore('attempts').put(attempt);
+    tx.oncomplete=()=>resolve(true); tx.onerror=()=>reject(tx.error);
+  });
+}
+async function getQueuedAttempts() {
+  const db=await openOfflineDB();
+  return new Promise((resolve,reject)=>{
+    const req=db.transaction('attempts','readonly').objectStore('attempts').getAll();
+    req.onsuccess=()=>resolve(req.result||[]); req.onerror=()=>reject(req.error);
+  });
+}
+async function removeQueuedAttempt(id) {
+  const db=await openOfflineDB();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction('attempts','readwrite'); tx.objectStore('attempts').delete(id);
+    tx.oncomplete=()=>resolve(true); tx.onerror=()=>reject(tx.error);
+  });
+}
+async function syncOfflineAttempts() {
+  if(!navigator.onLine) return;
+  let items=[];
+  try { items=await getQueuedAttempts(); } catch(e){ return; }
+  for(const item of items) {
+    await new Promise(resolve=>{
+      callServer('submitOfflineResult',[item],async function(){
+        await removeQueuedAttempt(item.attemptId);
+        resolve();
+      },function(){ resolve(); });
     });
+  }
+}
+window.addEventListener('online',()=>{setOfflineStatus();syncOfflineAttempts();});
+window.addEventListener('offline',setOfflineStatus);
+document.addEventListener('DOMContentLoaded',setOfflineStatus);
 
+function loadApp() {
+  setOfflineStatus();
+  callServer('getAppData', [], async function(data) {
+    appData = data;
+    $('subject').innerHTML = '<option value="">-- Chọn môn học --</option>';
+    $('qSubject').innerHTML = '';
+    (data.subjects || []).forEach(s => {
+      const option=document.createElement('option'); option.value=s.name; option.textContent=s.name; $('subject').appendChild(option);
+      const option2=document.createElement('option'); option2.value=s.name; option2.textContent=s.name; $('qSubject').appendChild(option2);
+    });
     renderSubjectCards(data.subjects || []);
-    if ($('homeQuestionCount')) $('homeQuestionCount').textContent = Number(data.questionCount || 0).toLocaleString('vi-VN');
-    if ($('homeSubjectCount')) $('homeSubjectCount').textContent = (data.subjects || []).length;
-
-    const examSelect = $('examSelect');
-    if (examSelect) {
-      examSelect.innerHTML = '<option value="">-- Chọn đề thi --</option>';
-      (data.exams || []).forEach(e => {
-        const op = document.createElement('option');
-        op.value = e.id;
-        op.textContent = e.title + ' | ' + e.subject + ' | ' + e.count + ' câu | ' + e.minutes + ' phút';
-        examSelect.appendChild(op);
-      });
+    if ($('homeQuestionCount')) $('homeQuestionCount').textContent=Number(data.questionCount||0).toLocaleString('vi-VN');
+    if ($('homeSubjectCount')) $('homeSubjectCount').textContent=(data.subjects||[]).length;
+    const examSelect=$('examSelect');
+    if(examSelect){examSelect.innerHTML='<option value="">-- Chọn đề thi --</option>';(data.exams||[]).forEach(e=>{const op=document.createElement('option');op.value=e.id;op.textContent=e.title+' | '+e.subject+' | '+e.count+' câu | '+e.minutes+' phút';examSelect.appendChild(op);});}
+    // Tải bản sao đầy đủ cho chế độ ngoại tuyến; không chặn giao diện chính.
+    callServer('getOfflineBundle',[],async function(bundle){
+      try { await saveOfflineBundle(bundle); await syncOfflineAttempts(); } catch(e){ console.warn(e); }
+    },function(err){ console.warn('Không tải được ngân hàng offline:',err); });
+  }, async function(error) {
+    try {
+      const bundle=await loadOfflineBundle();
+      if(!bundle) throw error;
+      appData={subjects:bundle.subjects.map(s=>({name:s.name,questionCount:bundle.questions.filter(q=>q.subject===s.name).length})),questionCount:bundle.questionCount,exams:[],examCount:bundle.examCount,examMinutes:bundle.examMinutes};
+      $('subject').innerHTML='<option value="">-- Chọn môn học --</option>';
+      $('qSubject').innerHTML='';
+      appData.subjects.forEach(s=>{const o=document.createElement('option');o.value=s.name;o.textContent=s.name;$('subject').appendChild(o);const o2=o.cloneNode(true);$('qSubject').appendChild(o2);});
+      renderSubjectCards(appData.subjects);
+      if($('homeQuestionCount')) $('homeQuestionCount').textContent=Number(bundle.questionCount||0).toLocaleString('vi-VN');
+      if($('homeSubjectCount')) $('homeSubjectCount').textContent=appData.subjects.length;
+      if($('examSelect')) $('examSelect').innerHTML='<option value="">Đề thi cấu hình riêng cần Internet</option>';
+      $('homeMessage').textContent='Đang dùng ngân hàng câu hỏi đã lưu trên thiết bị. Quản trị và đề thi cấu hình riêng cần Internet.';
+    } catch(e) {
+      $('homeMessage').textContent='Chưa có dữ liệu ngoại tuyến. Hãy kết nối Internet một lần để tải toàn bộ ngân hàng câu hỏi.';
     }
   });
 }
@@ -1794,73 +1864,49 @@ function renderSubjectCards(subjects) {
 
 /* BẮT ĐẦU BÀI THEO MÔN ĐƯỢC CHỌN */
 function startQuiz(subjectOverride, modeOverride) {
-  if (quizStarting) return;
-
-  const name = getStudentCode();
-  const subject = subjectOverride || $('subject').value;
-  const mode = modeOverride || currentMode;
-  const count = mode === 'exam' ? 30 : 0;
-
-  if (!subject) {
-    alert('Không xác định được môn học. Vui lòng tải lại trang.');
-    return;
+  const name=getStudentCode();
+  const subject=subjectOverride || $('subject').value;
+  const mode=modeOverride || currentMode;
+  const count=mode==='exam' ? 30 : 0;
+  if(!subject){alert('Không xác định được môn học. Vui lòng tải lại trang.');return;}
+  currentMode=mode; $('subject').value=subject;
+  $('homeMessage').textContent=mode==='exam'?'Đang tạo bài thi...':'Đang tải câu hỏi...';
+  const begin=function(data,isOffline){
+    offlineModeActive=!!isOffline;
+    quizData=data; answers={}; marked={}; currentIndex=0; quizSubmitting=false;
+    $('homeMessage').textContent='';
+    $('quizSubject').textContent=data.subject;
+    $('quizInfo').textContent=data.name+' | '+(data.mode==='practice'?'Luyện tập':'Thi kiểm tra ngẫu nhiên 30 câu')+(isOffline?' | NGOẠI TUYẾN':'');
+    $('totalNumber').textContent=data.total;
+    $('timerBox').classList.toggle('hidden',data.mode!=='exam');
+    if(data.mode==='exam'){remainingSeconds=data.minutes*60;updateTimer();clearInterval(timerInterval);timerInterval=setInterval(tickTimer,1000);}else clearInterval(timerInterval);
+    showSection('quiz'); renderQuestion();
+  };
+  if(navigator.onLine){
+    callServer('startQuiz',[{name:name,subject:subject,mode:mode,count:count,examId:''}],function(data){
+      data.startedAt=new Date().toISOString();
+      begin(data,false);
+    },async function(error){
+      try { const b=await loadOfflineBundle(); if(!b) throw error; begin(makeOfflineQuiz(b,name,subject,mode,count),true); }
+      catch(e){$('homeMessage').textContent='Không thể kết nối máy chủ và chưa có dữ liệu ngoại tuyến cho môn này.';}
+    });
+  } else {
+    loadOfflineBundle().then(b=>{
+      if(!b) throw new Error('Chưa tải ngân hàng câu hỏi.');
+      begin(makeOfflineQuiz(b,name,subject,mode,count),true);
+    }).catch(e=>{$('homeMessage').textContent=e.message||'Chưa có dữ liệu ngoại tuyến.';});
   }
-
-  quizStarting = true;
-  currentMode = mode;
-  $('subject').value = subject;
-  $('homeMessage').textContent = '';
-
-  // Chuyển màn hình ngay khi click; phần câu hỏi được mở khi máy chủ trả dữ liệu.
-  $('quizSubject').textContent = subject;
-  $('quizInfo').textContent = mode === 'exam' ? 'Thi kiểm tra ngẫu nhiên 30 câu' : 'Luyện tập';
-  $('totalNumber').textContent = '...';
-  $('currentNumber').textContent = '1';
-  $('questionText').textContent = '';
-  $('options').innerHTML = '';
-  $('questionNav').innerHTML = '';
-  $('explanation').classList.add('hidden');
-  $('quizContent').classList.add('hidden');
-  $('quizLoading').style.display = 'block';
-  $('timerBox').classList.toggle('hidden', mode !== 'exam');
-  clearInterval(timerInterval);
-  showSection('quiz');
-
-  callServer('startQuiz', [{
-    name: name,
-    subject: subject,
-    mode: mode,
-    count: count,
-    examId: ''
-  }], function(data) {
-    quizStarting = false;
-    $('quizLoading').style.display = 'none';
-    $('quizContent').classList.remove('hidden');
-    quizData = data;
-    answers = {};
-    marked = {};
-    currentIndex = 0;
-    quizSubmitting = false;
-    $('quizSubject').textContent = data.subject;
-    $('quizInfo').textContent = data.name + ' | ' +
-      (data.mode === 'practice' ? 'Luyện tập' : 'Thi kiểm tra ngẫu nhiên 30 câu');
-    $('totalNumber').textContent = data.total;
-    $('timerBox').classList.toggle('hidden', data.mode !== 'exam');
-    if (data.mode === 'exam') {
-      remainingSeconds = data.minutes * 60;
-      updateTimer();
-      clearInterval(timerInterval);
-      timerInterval = setInterval(tickTimer, 1000);
-    } else {
-      clearInterval(timerInterval);
-    }
-    renderQuestion();
-  }, function(error) {
-    quizStarting = false;
-    $('quizLoading').style.display = 'none';
-    $('homeMessage').textContent = error.message || 'Không thể tạo bài thi.';
-    showSection('home');
-  });
+}
+function makeOfflineQuiz(bundle,name,subject,mode,count) {
+  let qs=bundle.questions.filter(q=>q.subject===subject);
+  if(!qs.length) throw new Error('Chưa có câu hỏi ngoại tuyến cho môn '+subject+'.');
+  if(mode==='exam') {
+    qs=qs.slice().sort(()=>Math.random()-0.5).slice(0,Math.min(count||bundle.examCount||30,qs.length));
+  }
+  return {sessionId:'OFFLINE-'+Date.now(),name:name,subject:subject,mode:mode,total:qs.length,
+    minutes:mode==='exam'?(bundle.examMinutes||30):0,questions:qs.map(q=>({
+      id:q.id,question:q.question,options:q.options,correct:q.correct,explanation:q.explanation
+    })),startedAt:new Date().toISOString(),offline:true};
 }
 
 /* ĐỒNG HỒ */
@@ -2041,34 +2087,39 @@ function updateProgress() {
 /* NỘP BÀI */
 
 function submitCurrentQuiz(autoSubmit) {
-  if (!quizData || quizSubmitting) return;
-
-  const answered = Object.keys(answers).length;
-  const unanswered = quizData.total - answered;
-
-  if (!autoSubmit) {
-    const message = unanswered > 0
-      ? 'Bạn còn ' + unanswered +
-        ' câu chưa trả lời. Bạn có chắc chắn muốn nộp bài?'
-      : 'Bạn có chắc chắn muốn nộp bài?';
-
-    if (!confirm(message)) return;
+  if(!quizData||quizSubmitting)return;
+  const answered=Object.keys(answers).length, unanswered=quizData.total-answered;
+  if(!autoSubmit&&!confirm(unanswered>0?'Bạn còn '+unanswered+' câu chưa trả lời. Bạn có chắc chắn muốn nộp bài?':'Bạn có chắc chắn muốn nộp bài?'))return;
+  quizSubmitting=true; clearInterval(timerInterval); $('answeredInfo').textContent='Đang chấm bài...';
+  if(offlineModeActive || !navigator.onLine) {
+    finishOfflineAttempt(); return;
   }
-
-  quizSubmitting = true;
-  clearInterval(timerInterval);
-
-  $('answeredInfo').textContent = 'Đang chấm bài...';
-
-  callServer('submitQuiz', [
-    quizData.sessionId,
-    answers
-  ], function(result) {
-    showResult(result);
-  }, function(error) {
-    quizSubmitting = false;
-    alert(error.message || 'Lỗi khi nộp bài.');
+  callServer('submitQuiz',[quizData.sessionId,answers],function(result){showResult(result);},function(error){
+    // Máy chủ có thể mất kết nối ngay lúc nộp: chấm tại máy, lưu hàng đợi để đồng bộ.
+    finishOfflineAttempt();
   });
+}
+async function finishOfflineAttempt() {
+  const qs=quizData.questions||[];
+  let correct=0;
+  const details=qs.map(q=>{
+    const selected=String(answers[q.id]||'').toUpperCase();
+    const key=String(q.correct||'').toUpperCase();
+    const isCorrect=!!key&&selected===key;
+    if(isCorrect)correct++;
+    return {questionId:q.id,question:q.question,selected:selected,correct:key,isCorrect:isCorrect};
+  });
+  const total=details.length, wrong=total-correct, score=total?Math.round(correct/total*1000)/100:0;
+  let attemptId='OFFLINE-'+Date.now()+'-'+Math.random().toString(36).slice(2,10);
+  try { if(crypto.randomUUID) attemptId=crypto.randomUUID(); } catch(e){}
+  const result={name:quizData.name,subject:quizData.subject,mode:quizData.mode,total:total,correct:correct,wrong:wrong,
+    unanswered:details.filter(d=>!d.selected).length,score:score,pass:score>=(offlineBundle&&offlineBundle.passScore||5),details:details,
+    offlinePending:true};
+  const attempt={attemptId:attemptId,name:quizData.name,subject:quizData.subject,mode:quizData.mode,
+    questionIds:qs.map(q=>String(q.id)),answers:answers,startedAt:quizData.startedAt||new Date().toISOString()};
+  try { await queueOfflineAttempt(attempt); result.syncMessage='Kết quả đã lưu trên thiết bị và sẽ tự động đồng bộ khi có Internet.'; }
+  catch(e){result.syncMessage='Không lưu được hàng đợi đồng bộ. Hãy giữ ứng dụng mở và thử lại.';}
+  showResult(result);
 }
 
 /* KẾT QUẢ */
@@ -2093,6 +2144,11 @@ function showResult(data) {
   $('resultWrong').textContent = data.wrong;
   $('resultUnanswered').textContent = data.unanswered;
 
+  if (data.syncMessage) {
+    let syncBox = $('offlineSyncMessage');
+    if (!syncBox) { syncBox=document.createElement('div'); syncBox.id='offlineSyncMessage'; syncBox.className='message'; $('resultDetails').parentNode.insertBefore(syncBox,$('resultDetails')); }
+    syncBox.textContent=data.syncMessage;
+  }
   const details = $('resultDetails');
   details.innerHTML = '';
 
@@ -3232,5 +3288,13 @@ function formatAdminResultDate(value) {
 
 </script>
 
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('./sw.js').catch(function(err){ console.warn('SW:', err); });
+  });
+}
+</script>
 </body>
 </html>
