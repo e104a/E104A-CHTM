@@ -1158,6 +1158,20 @@ body {
 /* E104A offline status */
 #offlineStatus{position:sticky;top:0;z-index:1000;padding:7px 12px;text-align:center;font-weight:700;font-size:13px;background:#e8f5e9;color:#14532d}
 #offlineStatus.offline{background:#fff3cd;color:#805b00}
+
+/* E104A: điều hướng câu hỏi ngay dưới phương án trả lời */
+#quiz .question-actions {
+  display:flex !important; align-items:center !important; justify-content:space-between !important;
+  flex-wrap:nowrap !important; gap:8px !important; margin:14px 0 12px !important;
+}
+#quiz .question-actions button { min-width:0 !important; flex:1 1 0 !important; white-space:nowrap !important; }
+#quiz .question-actions #markButton { flex:0 1 auto !important; }
+@media(max-width:560px) {
+  #quiz .question-actions { display:flex !important; flex-wrap:nowrap !important; gap:6px !important; }
+  #quiz .question-actions button { padding:10px 7px !important; font-size:12px !important; }
+}
+#result .detail-row { line-height:1.55; }
+
 </style>
 </head>
 <body>
@@ -1265,8 +1279,6 @@ body {
 
         <div id="options" class="options"></div>
 
-        <div id="explanation" class="explanation hidden"></div>
-
         <div class="question-actions">
           <button class="secondary-button" onclick="previousQuestion()">
             ← Câu trước
@@ -1281,6 +1293,8 @@ body {
             Câu tiếp →
           </button>
         </div>
+
+        <div id="explanation" class="explanation hidden"></div>
       </div>
 
       <aside class="question-sidebar">
@@ -2164,7 +2178,7 @@ async function finishOfflineAttempt() {
     const key=String(q.correct||'').toUpperCase();
     const isCorrect=!!key&&selected===key;
     if(isCorrect)correct++;
-    return {questionId:q.id,question:q.question,selected:selected,correct:key,isCorrect:isCorrect};
+    return {questionId:q.id,question:q.question,options:Array.isArray(q.options)?q.options:[],selected:selected,correct:key,isCorrect:isCorrect};
   });
   const total=details.length, wrong=total-correct, score=total?Math.round(correct/total*1000)/100:0;
   let attemptId='OFFLINE-'+Date.now()+'-'+Math.random().toString(36).slice(2,10);
@@ -2226,7 +2240,7 @@ function showResult(data) {
 
     const options = document.createElement('div');
     options.style.cssText = 'display:grid;gap:6px;margin:8px 0 12px;';
-    (Array.isArray(d.options) ? d.options : []).forEach(function(option) {
+    (Array.isArray(d.options) && d.options.length ? d.options : ['A','B','C','D'].map(function(k){ return {key:k,text:d[k] || ''}; }).filter(function(o){ return String(o.text || '').trim(); })).forEach(function(option) {
       const line = document.createElement('div');
       const key = String(option.key || '').toUpperCase();
       const isCorrectOption = key === String(d.correct || '').toUpperCase();
