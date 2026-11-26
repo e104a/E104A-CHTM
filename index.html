@@ -3030,9 +3030,21 @@ function previewWordFile() {
   reader.onload = function() {
     const base64 = String(reader.result).split(',')[1];
     callServerPost('previewWordQuestions', [adminPassword, file.name, base64, subject, file.type || ''], function(data) {
-      wordImportToken = data.token; wordPreviewQuestions = data.questions || [];
-      $('wordMessage').textContent = 'Đọc được ' + data.total + ' câu. Nhận dạng đáp án: ' + data.ready + '. Cần kiểm tra: ' + data.review + '.';
-      renderWordPreview();
+      wordImportToken = data.token;
+      wordPreviewQuestions = [];
+
+      // Backend chia dữ liệu xem trước thành từng phần 10 câu để tránh
+      // giới hạn dung lượng phản hồi. Phải tải đủ mọi phần trước khi hiển thị.
+      const chunkCount = Number(data.chunkCount || 0);
+      if (chunkCount > 0) {
+        $('wordMessage').textContent = 'Đã phân tích ' + data.total + ' câu. Đang tải đầy đủ danh sách để kiểm tra...';
+        loadWordPreviewChunks(data.token, chunkCount, 0, []);
+      } else {
+        // Tương thích với phiên bản backend cũ trả trực tiếp data.questions.
+        wordPreviewQuestions = Array.isArray(data.questions) ? data.questions : [];
+        $('wordMessage').textContent = 'Đọc được ' + (data.total || wordPreviewQuestions.length) + ' câu. Nhận dạng đáp án: ' + (data.ready || 0) + '. Cần kiểm tra: ' + (data.review || 0) + '.';
+        renderWordPreview();
+      }
     }, function(err) {
       $('wordMessage').textContent = (err.message || 'Không đọc được tệp.') + ' Hãy dùng định dạng Word tương thích như DOC, DOCX, DOCM, RTF hoặc ODT.';
     });
@@ -3040,6 +3052,31 @@ function previewWordFile() {
   reader.onerror = function() { $('wordMessage').textContent = 'Không đọc được tệp từ máy tính.'; };
   reader.readAsDataURL(file);
 }
+function loadWordPreviewChunks(token, chunkCount, chunkIndex, collected) {
+  if (chunkIndex >= chunkCount) {
+    wordPreviewQuestions = collected;
+    $('wordMessage').textContent = 'Đã tải đầy đủ ' + wordPreviewQuestions.length + ' câu. Đang nhận dạng đáp án: ' +
+      (wordPreviewQuestions.filter(q => q.correct && !q.needsReview).length) +
+      '. Cần kiểm tra: ' +
+      (wordPreviewQuestions.filter(q => !q.correct || q.needsReview).length) + '.';
+    renderWordPreview();
+    return;
+  }
+
+  callServer('getWordPreviewChunk', [adminPassword, token, chunkIndex], function(part) {
+    if (!Array.isArray(part)) {
+      $('wordMessage').textContent = 'Dữ liệu phần ' + (chunkIndex + 1) + ' không hợp lệ. Hãy tải lại tệp để xem trước.';
+      return;
+    }
+    collected.push.apply(collected, part);
+    loadWordPreviewChunks(token, chunkCount, chunkIndex + 1, collected);
+  }, function(err) {
+    $('wordMessage').textContent = 'Không tải được phần ' + (chunkIndex + 1) + '/' + chunkCount +
+      ' của danh sách câu hỏi: ' + ((err && err.message) || String(err)) +
+      '. Hãy tải lại tệp và thử lại.';
+  });
+}
+
 function renderWordPreview() {
   const box = $('wordPreview'); box.innerHTML = '';
   const summary = document.createElement('p');
