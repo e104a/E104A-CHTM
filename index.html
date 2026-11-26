@@ -2427,7 +2427,17 @@ function submitCurrentQuiz(autoSubmit) {
   if(offlineModeActive || !navigator.onLine) {
     finishOfflineAttempt(); return;
   }
-  callServer('submitQuiz',[quizData.sessionId,answers],function(result){showResult(result);},function(error){
+  callServer('submitQuiz',[quizData.sessionId,answers],async function(result){
+    result = result || {};
+    // Ghi riêng lượt THI KIỂM TRA ngay khi máy chủ xác nhận nộp bài.
+    // Dùng thông tin phiên ở máy khách để không phụ thuộc trường mode/subject từ máy chủ.
+    result.subject = result.subject || quizData.subject;
+    result.mode = 'exam';
+    result.name = result.name || quizData.name || getStudentCode();
+    if (!Array.isArray(result.details)) result.details = [];
+    await saveCompletedAttempt(result);
+    await showResult(result);
+  },function(error){
     // Máy chủ có thể mất kết nối ngay lúc nộp: chấm tại máy, lưu hàng đợi để đồng bộ.
     finishOfflineAttempt();
   });
