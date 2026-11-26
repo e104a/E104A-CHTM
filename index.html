@@ -2653,25 +2653,32 @@ function renderSubjects(subjectList) {
     remove.type = 'button';
     remove.className = 'secondary-button subject-delete-button';
     remove.textContent = 'Xóa môn';
-    // Nút xóa là một hành động độc lập, không được kích hoạt nút khóa/mở môn.
+    // Xóa môn qua API máy chủ; kiểm tra mã môn trước khi gửi yêu cầu.
     remove.addEventListener('click', function(event) {
       if (event) { event.preventDefault(); event.stopPropagation(); }
-      const confirmed = window.confirm('CẢNH BÁO: XÓA TOÀN BỘ MÔN HỌC “' + name + '”\n\nThao tác này sẽ xóa tên môn trong SUBJECTS, tất cả câu hỏi của môn trong QUESTIONS và các đề thi thuộc môn trong EXAMS. Lịch sử kết quả thi được giữ nguyên.\n\nDữ liệu đã xóa không thể khôi phục. Bạn chắc chắn muốn xóa?');
+      if (!id) {
+        const message = 'Không xác định được mã môn học (ID). Hãy tải lại danh sách môn học rồi thử lại.';
+        if ($('subjectMessage')) $('subjectMessage').textContent = message;
+        window.alert(message);
+        return;
+      }
+      const confirmed = window.confirm('CẢNH BÁO: XÓA TOÀN BỘ MÔN HỌC “' + name + '”\\n\\nThao tác này sẽ xóa môn học và dữ liệu câu hỏi, đề thi, phiên thi chưa hoàn tất thuộc môn. Lịch sử kết quả thi được giữ nguyên.\\n\\nDữ liệu đã xóa không thể khôi phục. Bạn chắc chắn muốn xóa?');
       if (!confirmed) return;
       remove.disabled = true;
       remove.textContent = 'Đang xóa...';
-      if ($('subjectMessage')) $('subjectMessage').textContent = 'Đang xóa môn học và dữ liệu câu hỏi...';
-      callServer('deleteSubject', [adminPassword, id], function(msg) {
-        if ($('subjectMessage')) $('subjectMessage').textContent = msg || 'Đã xóa môn học và dữ liệu liên quan.';
+      if ($('subjectMessage')) $('subjectMessage').textContent = 'Đang gửi yêu cầu xóa môn ' + name + '...';
+      callServer('deleteSubject', [adminPassword, String(id).trim()], function(msg) {
+        if ($('subjectMessage')) $('subjectMessage').textContent = msg || 'Máy chủ đã xử lý yêu cầu xóa môn.';
         loadAdminData();
         loadApp();
       }, function(err) {
         remove.disabled = false;
         remove.textContent = 'Xóa môn';
-        if ($('subjectMessage')) $('subjectMessage').textContent = (err && err.message) || 'Không xóa được môn học.';
-        window.alert((err && err.message) || 'Không xóa được môn học.');
+        const message = (err && err.message) || 'Không xóa được môn học.';
+        if ($('subjectMessage')) $('subjectMessage').textContent = message;
+        window.alert(message);
       });
-    }, true);
+    });
 
     actions.append(rename, toggle, remove);
     row.append(number, info, state, actions);
