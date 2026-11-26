@@ -1608,7 +1608,7 @@ function escapeHTML(value) {
   })[c]);
 }
 
-function callServer(functionName, args, success, failure) {
+function callServer(functionName, args, success, failure, timeoutMs) {
   const API_URL = 'https://script.google.com/macros/s/AKfycbz1536xKvT4E9a-U53ilm1aNVt7zMQMma6lUaTfwtpOW0XDdW_6DDNCUGlcZ3_DdXez1Q/exec';
   const callbackName = 'quizCallback_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
   const params = new URLSearchParams();
@@ -1629,7 +1629,7 @@ function callServer(functionName, args, success, failure) {
     const err = new Error('Máy chủ phản hồi quá lâu. Vui lòng thử lại.');
     cleanup();
     if (typeof failure === 'function') failure(err); else alert(err.message);
-  }, 20000);
+  }, Math.max(20000, Number(timeoutMs) || 20000));
   window[callbackName] = function(response) {
     if (settled) return;
     try {
@@ -3440,6 +3440,8 @@ function confirmWordImportFromPreview() {
       : 'ĐANG BỔ SUNG ' + selected.length + ' câu hỏi vào môn ' + subjectName + '...';
     wordMessage.style.cssText = 'display:block;padding:12px 14px;margin:12px 0;border-radius:8px;background:#eff6ff;border:1px solid #93c5fd;color:#1d4ed8;font-weight:600;';
   }
+  // Thay thế có thể mất nhiều thời gian khi ngân hàng môn học có nhiều dòng.
+  // Chờ tối đa 5 phút riêng cho thao tác này; API khác giữ nguyên thời gian chờ mặc định.
   callServer('confirmWordImport', [adminPassword, wordImportToken, selected, replaceExisting], function(msg) {
     if (wordMessage) {
       wordMessage.textContent = (replaceExisting ? '✓ THAY THẾ THÀNH CÔNG' : '✓ BỔ SUNG THÀNH CÔNG') +
@@ -3458,7 +3460,7 @@ function confirmWordImportFromPreview() {
         ': ' + ((err && err.message) || 'Nhập câu hỏi thất bại. Ngân hàng cũ được giữ nguyên nếu thao tác chưa hoàn tất.');
       wordMessage.style.cssText = 'display:block;padding:12px 14px;margin:12px 0;border-radius:8px;background:#fef2f2;border:1px solid #fca5a5;color:#b91c1c;font-weight:700;line-height:1.6;';
     }
-  });
+  }, 330000);
 }
 
 /* NHẬP EXCEL */
