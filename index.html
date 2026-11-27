@@ -2060,42 +2060,34 @@ function getStudentCode() {
 /* BẮT ĐẦU */
 
 
-/* TẢI TÀI LIỆU ÔN TẬP MÔN HỌC DẠNG WORD (.doc) */
+/* TẢI TÀI LIỆU ÔN TẬP DẠNG WORD (.docx) */
 function downloadSubjectWord(subjectName, button) {
   const oldText = button ? button.textContent : '';
-  if (button) { button.disabled = true; button.textContent = 'ĐANG TẠO FILE...'; }
+  if (button) { button.disabled = true; button.textContent = 'ĐANG TẠO FILE DOCX...'; }
   callServer('getSubjectDocument', [subjectName], function(data) {
     try {
-      const esc = value => String(value == null ? '' : value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-      let body = '<h1>TÀI LIỆU ÔN TẬP MÔN ' + esc(data.subject) + '</h1>';
-      body += '<p class="meta">LỚP E104A - HỆ 2 - HỌC VIỆN HẬU CẦN</p>';
-      body += '<p><b>Tổng số câu hỏi:</b> ' + Number(data.total || 0) + '</p><hr>';
-      (data.questions || []).forEach((q, i) => {
-        body += '<div class="question"><p class="q"><b>Câu ' + (i+1) + ': ' + esc(q.question) + '</b></p>';
-        (q.options || []).forEach(o => {
-          const isCorrect = String(o.key).toUpperCase() === String(q.correct).toUpperCase();
-          body += '<p class="option' + (isCorrect ? ' correct' : '') + '">' + esc(o.key) + '. ' + esc(o.text) + (isCorrect ? ' <b>(ĐÁP ÁN ĐÚNG)</b>' : '') + '</p>';
-        });
-        body += '<p class="answer"><b>Đáp án đúng: ' + esc(q.correct || 'Chưa xác định') + '</b></p>';
-        if (String(q.explanation || '').trim()) body += '<p class="explain"><b>Giải thích:</b> ' + esc(q.explanation).replace(/\r?\n/g,'<br>') + '</p>';
-        body += '</div>';
-      });
-      const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' +
-        'body{font-family:"Times New Roman";font-size:13pt;line-height:1.45;color:#111}h1{text-align:center;font-size:16pt}.meta{text-align:center;font-weight:bold}.question{margin:0 0 13pt;page-break-inside:avoid}.q{margin-bottom:5pt}.option{margin:2pt 0 2pt 18pt}.correct{color:#c00000;font-weight:bold}.answer{margin:5pt 0;color:#c00000}.explain{margin:4pt 0 10pt;font-style:italic}' +
-        '</style></head><body>' + body + '</body></html>';
-      const blob = new Blob(['\ufeff', html], {type:'application/msword;charset=utf-8'});
+      if (!data || !data.base64) throw new Error('Máy chủ không trả về tệp DOCX.');
+      const binary = atob(data.base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const blob = new Blob([bytes], {type: data.mimeType || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      const safeName = String(data.subject || 'Mon_hoc').replace(/[\\/:*?"<>|]/g,'_').trim();
-      a.href = url; a.download = 'Tai_lieu_on_tap_' + safeName + '.doc';
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1500);
-    } catch (err) { alert('Không tạo được file Word: ' + (err.message || err)); }
-    finally { if (button) { button.disabled = false; button.textContent = oldText || 'TẢI TÀI LIỆU WORD'; } }
+      a.href = url;
+      a.download = data.fileName || 'Tai_lieu_on_tap.docx';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    } catch (err) {
+      alert('Không tạo được tài liệu DOCX: ' + (err.message || err));
+    } finally {
+      if (button) { button.disabled = false; button.textContent = oldText || 'TẢI TÀI LIỆU WORD'; }
+    }
   }, function(error) {
     alert('Không tải được tài liệu: ' + (error.message || error));
     if (button) { button.disabled = false; button.textContent = oldText || 'TẢI TÀI LIỆU WORD'; }
-  });
+  }, 120000);
 }
 
 function renderSubjectCards(subjects) {
