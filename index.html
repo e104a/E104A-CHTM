@@ -2171,6 +2171,31 @@ function normalizeQuestionRecord(q) {
   };
 }
 
+
+/* Đảo thứ tự đáp án cho lượt ngoại tuyến và remap đáp án đúng theo nhãn mới. */
+function shuffleQuestionOptions(question) {
+  const q = normalizeQuestionRecord(question);
+  const source = q.options.map(o => ({key:String(o.key || '').toUpperCase(), text:String(o.text || '')}));
+  const oldCorrect = String(q.correct || '').toUpperCase();
+  if (source.length < 2 || !source.some(o => o.key === oldCorrect)) return q;
+
+  const shuffled = source.slice();
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  const remapped = Object.create(null);
+  q.options = shuffled.map((option, index) => {
+    const newKey = String.fromCharCode(65 + index);
+    remapped[option.key] = newKey;
+    return {key:newKey, text:option.text};
+  });
+  q.correct = remapped[oldCorrect] || oldCorrect;
+  ['A','B','C','D'].forEach(key => { delete q[key]; });
+  q.options.forEach(option => { q[option.key] = option.text; });
+  return q;
+}
+
 /* BẮT ĐẦU BÀI THEO MÔN ĐƯỢC CHỌN */
 function startQuiz(subjectOverride, modeOverride) {
   const name=getStudentCode();
@@ -2226,8 +2251,11 @@ function makeOfflineQuiz(bundle,name,subject,mode,count) {
   if(mode==='exam') {
     qs=qs.slice().sort(()=>Math.random()-0.5).slice(0,Math.min(count||bundle.examCount||30,qs.length));
   }
-  return {sessionId:'OFFLINE-'+Date.now(),name:name,subject:subject,mode:mode,total:qs.length,
-    minutes:mode==='exam'?(bundle.examMinutes||30):0,questions:qs.map(q=>({
+  // Mỗi lượt ngoại tuyến đảo đáp án một lần; câu hỏi vẫn giữ nguyên thứ tự
+  // ở luyện tập và vẫn chọn ngẫu nhiên 30 câu ở chế độ kiểm tra.
+  const preparedQuestions = qs.map(q => shuffleQuestionOptions(q));
+  return {sessionId:'OFFLINE-'+Date.now(),name:name,subject:subject,mode:mode,total:preparedQuestions.length,
+    minutes:mode==='exam'?(bundle.examMinutes||30):0,questions:preparedQuestions.map(q=>({
       id:q.id,question:q.question,options:q.options,correct:q.correct,explanation:q.explanation
     })),startedAt:new Date().toISOString(),offline:true};
 }
