@@ -2760,7 +2760,6 @@ function backHome() {
 
 function showAdmin() {
   try {
-    // Kiểm tra các thành phần giao diện trước khi chuyển màn hình
     const admin = document.getElementById('admin');
     const login = document.getElementById('adminLogin');
     const dashboard = document.getElementById('adminDashboard');
@@ -2772,7 +2771,6 @@ function showAdmin() {
       return;
     }
 
-    // Ẩn các màn hình khác và mở khu vực quản trị
     ['home', 'quiz', 'result'].forEach(function(id) {
       const el = document.getElementById(id);
       if (el) el.classList.add('hidden');
@@ -2781,15 +2779,33 @@ function showAdmin() {
     admin.classList.remove('hidden');
     login.classList.remove('hidden');
     dashboard.classList.add('hidden');
-
     message.textContent = '';
     pin.value = '';
-
     window.scrollTo(0, 0);
-    setTimeout(function() {
-      pin.focus();
-    }, 150);
 
+    // Tự xác thực bằng mật khẩu đã lưu trên chính trình duyệt/thiết bị này.
+    let rememberedPin = '';
+    try { rememberedPin = localStorage.getItem('E104A_ADMIN_PIN') || ''; } catch (e) {}
+    if (rememberedPin) {
+      message.textContent = 'Đang xác thực Admin...';
+      callServer('adminLogin', [rememberedPin], function() {
+        adminPassword = rememberedPin;
+        login.classList.add('hidden');
+        dashboard.classList.remove('hidden');
+        message.textContent = '';
+        loadAdminData();
+      }, function() {
+        try { localStorage.removeItem('E104A_ADMIN_PIN'); } catch (e) {}
+        adminPassword = '';
+        login.classList.remove('hidden');
+        dashboard.classList.add('hidden');
+        message.textContent = 'Mật khẩu đã lưu không còn hợp lệ. Vui lòng đăng nhập lại.';
+        setTimeout(function() { pin.focus(); }, 100);
+      });
+    } else {
+      login.classList.remove('hidden');
+      setTimeout(function() { pin.focus(); }, 150);
+    }
   } catch (err) {
     console.error('Lỗi mở màn hình Admin:', err);
     alert('Không mở được màn hình Admin: ' + err.message);
@@ -2812,6 +2828,8 @@ function loginAdmin() {
 
   callServer('adminLogin', [pin], function() {
     adminPassword = pin;
+    // Ghi nhớ đăng nhập để các lần truy cập sau trên thiết bị này không phải nhập lại.
+    try { localStorage.setItem('E104A_ADMIN_PIN', pin); } catch (e) {}
     $('adminMessage').textContent = '';
     $('adminLogin').classList.add('hidden');
     $('adminDashboard').classList.remove('hidden');
@@ -2961,6 +2979,8 @@ function loadAdminData() {
 function logoutAdmin() {
   adminPassword = '';
   adminData = null;
+  // Đăng xuất chủ động sẽ xóa thông tin ghi nhớ trên thiết bị này.
+  try { localStorage.removeItem('E104A_ADMIN_PIN'); } catch (e) {}
 
   if ($('adminPin')) $('adminPin').value = '';
   if ($('newPin')) $('newPin').value = '';
@@ -3779,6 +3799,7 @@ function changePin() {
     [adminPassword, newPin],
     function(message) {
       adminPassword = newPin;
+      try { localStorage.setItem('E104A_ADMIN_PIN', newPin); } catch (e) {}
       $('adminPin').value = newPin;
       $('newPin').value = '';
       $('settingMessage').textContent = message;
