@@ -2074,7 +2074,7 @@ function downloadSubjectWord(subjectName, button) {
       });
       const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' +
         'body{font-family:"Times New Roman";font-size:13pt;line-height:1.45;color:#111}h1{text-align:center;font-size:16pt}.meta{text-align:center;font-weight:bold}.question{margin:0 0 13pt;page-break-inside:avoid}.q{margin-bottom:5pt}.option{margin:2pt 0 2pt 18pt}.correct{color:#c00000;font-weight:bold}.answer{margin:5pt 0;color:#c00000}.explain{margin:4pt 0 10pt;font-style:italic}' +
-        '</style></head><body>' + body + '</body></html>';
+        '.answer-feedback-layer{position:fixed;inset:0;z-index:99999;pointer-events:none;display:flex;align-items:center;justify-content:center}.answer-firework-particle{position:absolute;left:50%;top:43%;width:9px;height:9px;border-radius:50%;opacity:0;background:hsl(var(--hue),95%,58%);box-shadow:0 0 10px hsl(var(--hue),95%,65%);animation:answerFireworkBurst 1050ms ease-out forwards}@keyframes answerFireworkBurst{0%{opacity:1;transform:translate(-50%,-50%) scale(.35)}65%{opacity:1}100%{opacity:0;transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(.05)}}.answer-feedback-message{position:relative;display:flex;flex-direction:column;align-items:center;gap:5px;padding:14px 22px;border-radius:20px;background:rgba(255,255,255,.94);box-shadow:0 8px 30px rgba(0,0,0,.16);font-size:42px;animation:answerFeedbackPop 850ms cubic-bezier(.2,.8,.2,1) both}.answer-feedback-message small{font-size:15px;font-weight:800;color:#16834b}.answer-feedback-message.is-wrong small{color:#d83b42}@keyframes answerFeedbackPop{0%{opacity:0;transform:translateY(18px) scale(.55)}22%{opacity:1;transform:translateY(0) scale(1.12)}40%{transform:scale(1)}100%{opacity:0;transform:translateY(-10px) scale(.96)}}@media(prefers-reduced-motion:reduce){.answer-firework-particle,.answer-feedback-message{animation-duration:1ms!important}}</style></head><body>' + body + '</body></html>';
       const blob = new Blob(['\ufeff', html], {type:'application/msword;charset=utf-8'});
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -2352,6 +2352,30 @@ function renderQuestion() {
   updateProgress();
 }
 
+function showAnswerFeedback(isCorrect) {
+  const layer = document.createElement('div');
+  layer.className = 'answer-feedback-layer';
+  layer.setAttribute('aria-hidden', 'true');
+  const message = document.createElement('div');
+  message.className = 'answer-feedback-message' + (isCorrect ? '' : ' is-wrong');
+  message.innerHTML = isCorrect ? '<span>🎉 🎆 🎇</span><small>CHÍNH XÁC!</small>' : '<span>😢</span><small>CHƯA ĐÚNG, CỐ LÊN!</small>';
+  layer.appendChild(message);
+  if (isCorrect) {
+    for (let i = 0; i < 34; i++) {
+      const particle = document.createElement('span');
+      const angle = Math.random() * Math.PI * 2;
+      const distance = 75 + Math.random() * 185;
+      particle.className = 'answer-firework-particle';
+      particle.style.setProperty('--dx', Math.cos(angle) * distance + 'px');
+      particle.style.setProperty('--dy', Math.sin(angle) * distance + 'px');
+      particle.style.setProperty('--hue', Math.floor(Math.random() * 360));
+      layer.appendChild(particle);
+    }
+  }
+  document.body.appendChild(layer);
+  setTimeout(() => layer.remove(), isCorrect ? 1250 : 950);
+}
+
 function selectAnswer(letter) {
   if (!quizData || quizSubmitting) return;
 
@@ -2360,6 +2384,8 @@ function selectAnswer(letter) {
   if (quizData.mode === 'practice' && answers[q.id]) return;
 
   answers[q.id] = letter;
+  // Chỉ phản hồi ngay ở chế độ luyện tập; bài kiểm tra giữ nguyên tính nghiêm túc.
+  if (quizData.mode === 'practice') showAnswerFeedback(letter === q.correct);
   saveCurrentDraft();
   renderQuestion();
 }
