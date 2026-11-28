@@ -1256,6 +1256,10 @@ body {
       <button type="button" class="nav-user" onclick="showAdmin()"><span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M4 21c0-4.2 3.6-7 8-7s8 2.8 8 7z"/></svg></span><span>Admin</span>⌄</button>
     </nav>
 
+    <div style="display:flex;justify-content:flex-end;margin:10px 0 14px;">
+      <button type="button" id="updateAppButton" class="secondary-button" onclick="updateAppVersion()" style="font-weight:800;border:1px solid #b99742;background:#fff8df;color:#654b0c;">↻ CẬP NHẬT PHIÊN BẢN MỚI</button>
+    </div>
+
     <div class="home-layout">
       <section class="subjects-panel">
         <div class="section-heading"><span class="heading-icon"><svg viewBox="0 0 24 24"><path d="m2 9 10-5 10 5-10 5zM6 11v5c4 3 8 3 12 0v-5M22 9v7"/></svg></span> CHỌN MÔN HỌC ĐỂ ÔN TẬP VÀ THI</div>
@@ -2856,6 +2860,32 @@ async function showHistory() {
     msg.textContent = 'Không tải được lịch sử từ máy chủ: ' + (error.message || 'Lỗi kết nối');
     box.appendChild(msg);
   });
+}
+
+/* CẬP NHẬT PHIÊN BẢN MỚI TRÊN GITHUB PAGES */
+async function updateAppVersion() {
+  const button = document.getElementById('updateAppButton');
+  const originalText = button ? button.textContent : '↻ CẬP NHẬT PHIÊN BẢN MỚI';
+  if (!confirm('Ứng dụng sẽ tải lại phiên bản mới nhất. Tiến độ bài đang làm sẽ được lưu trên thiết bị. Bạn có muốn tiếp tục?')) return;
+  if (button) { button.disabled = true; button.textContent = 'ĐANG KIỂM TRA CẬP NHẬT...'; }
+  try {
+    if (!navigator.onLine) throw new Error('Thiết bị đang ngoại tuyến. Hãy kết nối Internet rồi thử lại.');
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.filter(reg => new URL(reg.scope).origin === location.origin && new URL(reg.scope).pathname.startsWith('/E104A-CHTM/')).map(reg => reg.unregister()));
+    }
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.filter(key => key.startsWith('e104a-shell-')).map(key => caches.delete(key)));
+    }
+    if (button) button.textContent = 'ĐANG TẢI PHIÊN BẢN MỚI...';
+    const freshUrl = new URL('./', location.href);
+    freshUrl.searchParams.set('app_update', String(Date.now()));
+    location.replace(freshUrl.href);
+  } catch (error) {
+    alert('Không cập nhật được phiên bản mới: ' + (error && error.message ? error.message : error));
+    if (button) { button.disabled = false; button.textContent = originalText; }
+  }
 }
 
 /* QUAY LẠI */
