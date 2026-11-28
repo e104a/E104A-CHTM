@@ -1760,15 +1760,23 @@ function showSection(id) {
 }
 
 /* KIỂM TRA PHIÊN BẢN MÃ NGUỒN TRÊN GITHUB PAGES */
-const E104A_BUILD_ID = '20261128-1640';
+const E104A_BUILD_ID = '20261128-1700';
+let e104aVersionCheckRunning = false;
+let e104aUpdateNoticeShown = false;
 async function checkAppSourceUpdate() {
   const button = document.getElementById('updateAppButton');
-  if (!button || !navigator.onLine) return;
+  if (!button || !navigator.onLine || e104aVersionCheckRunning || e104aUpdateNoticeShown) return;
+  e104aVersionCheckRunning = true;
   try {
-    const response = await fetch('./version.json?check=' + Date.now(), { cache: 'no-store' });
+    // Thêm dấu thời gian để tránh dùng phản hồi cũ từ bộ nhớ đệm.
+    const response = await fetch('./version.json?check=' + Date.now(), {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache' }
+    });
     if (!response.ok) return;
     const remote = await response.json();
     if (remote && String(remote.buildId || '') && String(remote.buildId) !== E104A_BUILD_ID) {
+      e104aUpdateNoticeShown = true;
       button.textContent = '⚠ CÓ PHIÊN BẢN MỚI - NHẤN ĐỂ CẬP NHẬT';
       button.style.background = '#f59e0b';
       button.style.borderColor = '#d97706';
@@ -1778,13 +1786,29 @@ async function checkAppSourceUpdate() {
     }
   } catch (error) {
     console.warn('Không kiểm tra được phiên bản mới:', error);
+  } finally {
+    e104aVersionCheckRunning = false;
   }
 }
+
+// Kiểm tra lại định kỳ và khi người dùng quay lại ứng dụng,
+// tránh bỏ lỡ cập nhật nếu GitHub Pages triển khai chậm lúc vừa mở app.
+function startAppVersionAutoCheck() {
+  checkAppSourceUpdate();
+  if (!window.e104aVersionCheckTimer) {
+    window.e104aVersionCheckTimer = setInterval(checkAppSourceUpdate, 30000);
+  }
+}
+window.addEventListener('online', checkAppSourceUpdate);
+window.addEventListener('focus', checkAppSourceUpdate);
+document.addEventListener('visibilitychange', function() {
+  if (!document.hidden) checkAppSourceUpdate();
+});
 
 /* KHỞI TẠO */
 
 document.addEventListener('DOMContentLoaded', function() {
-  checkAppSourceUpdate();
+  startAppVersionAutoCheck();
   loadApp();
   renderManualOptionInputs();
   const examSelect = document.getElementById('examSelect');
