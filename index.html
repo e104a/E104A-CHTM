@@ -256,8 +256,13 @@ button:disabled {
 }
 .history-column h4 { margin: 0 0 12px; color: var(--primary); }
 .history-column .detail-row { margin: 0 0 10px; min-width: 0; overflow-wrap: anywhere; }
+/* Giữ bố cục hai cột cả trên điện thoại */
 @media (max-width: 700px) {
-  .history-columns { grid-template-columns: 1fr; }
+  .history-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .history-column { padding: 8px; }
+  .history-column h4 { font-size: 12px; line-height: 1.35; }
+  .history-column .detail-row { font-size: 12px; }
+  .history-column button { width: 100%; margin-left: 0 !important; padding: 9px 6px; font-size: 11px; }
 }
 
 .quiz-top {
@@ -1755,7 +1760,7 @@ function showSection(id) {
 }
 
 /* KIỂM TRA PHIÊN BẢN MÃ NGUỒN TRÊN GITHUB PAGES */
-const E104A_BUILD_ID = '20261128-1630';
+const E104A_BUILD_ID = '20261128-1640';
 async function checkAppSourceUpdate() {
   const button = document.getElementById('updateAppButton');
   if (!button || !navigator.onLine) return;
