@@ -1804,6 +1804,9 @@ function checkAppDataChanges() {
     if (!previousRevision) {
       try { localStorage.setItem('E104A_DATA_REVISION', currentRevision); } catch (e) {}
     } else if (previousRevision !== currentRevision) {
+      // Ghi nhận revision mới ngay khi phát hiện để sau khi người dùng tải lại
+      // không bị lặp cảnh báo với cùng một thay đổi.
+      try { localStorage.setItem('E104A_DATA_REVISION', currentRevision); } catch (e) {}
       showE104AUpdateNotice('Dữ liệu môn học, câu hỏi, đề thi, cấu hình hoặc kết quả thi đã thay đổi. Nhấn để tải lại dữ liệu mới nhất.');
     }
     e104aDataCheckRunning = false;
