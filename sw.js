@@ -1,4 +1,4 @@
-const CACHE_NAME = 'e104a-shell-v15';
+const CACHE_NAME = 'e104a-shell-v16';
 const APP_SHELL = [
   './',
   './index.html',
