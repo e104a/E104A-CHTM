@@ -1842,8 +1842,13 @@ function runE104AAutoUpdateChecks() {
 }
 function startAppVersionAutoCheck() {
   runE104AAutoUpdateChecks();
-  if (!window.e104aVersionCheckTimer) {
-    window.e104aVersionCheckTimer = setInterval(runE104AAutoUpdateChecks, 3000);
+  // Kiểm tra dữ liệu rất nhẹ qua mã phiên bản máy chủ mỗi 3 giây.
+  if (!window.e104aDataRevisionTimer) {
+    window.e104aDataRevisionTimer = setInterval(checkAppDataChanges, 3000);
+  }
+  // Phiên bản giao diện GitHub chỉ cần kiểm tra mỗi 10 giây.
+  if (!window.e104aSourceVersionTimer) {
+    window.e104aSourceVersionTimer = setInterval(checkAppSourceUpdate, 10000);
   }
 }
 window.addEventListener('online', runE104AAutoUpdateChecks);
