@@ -1765,6 +1765,7 @@ let e104aVersionCheckRunning = false;
 let e104aUpdateNoticeShown = false;
 let e104aDataFingerprint = null;
 let e104aDataBaselineReady = false;
+let e104aDataCheckRunning = false;
 
 function showE104AUpdateNotice(reason) {
   if (e104aUpdateNoticeShown) return;
@@ -1788,7 +1789,8 @@ function stableE104AString(value) {
 }
 
 function checkAppDataChanges() {
-  if (!navigator.onLine || e104aUpdateNoticeShown) return;
+  if (!navigator.onLine || e104aUpdateNoticeShown || e104aDataCheckRunning) return;
+  e104aDataCheckRunning = true;
   // getAppData kiểm tra môn học, cấu hình, đề thi và các dữ liệu công khai;
   // getOfflineBundle kiểm tra cả nội dung ngân hàng câu hỏi.
   callServer('getAppData', [], function(appSnapshot) {
@@ -1805,9 +1807,11 @@ function checkAppDataChanges() {
       }
     }, function(error) {
       console.warn('Không kiểm tra được thay đổi ngân hàng câu hỏi:', error);
+      e104aDataCheckRunning = false;
     }, 30000);
   }, function(error) {
     console.warn('Không kiểm tra được thay đổi dữ liệu ứng dụng:', error);
+    e104aDataCheckRunning = false;
   }, 30000);
 }
 
