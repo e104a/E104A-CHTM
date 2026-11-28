@@ -1760,7 +1760,7 @@ function showSection(id) {
 }
 
 /* KIỂM TRA PHIÊN BẢN MÃ NGUỒN TRÊN GITHUB PAGES */
-const E104A_BUILD_ID = '20261128-1810';
+const E104A_BUILD_ID = '20261128-1820';
 let e104aVersionCheckRunning = false;
 let e104aUpdateNoticeShown = false;
 let e104aDataFingerprint = null;
@@ -1791,27 +1791,24 @@ function stableE104AString(value) {
 function checkAppDataChanges() {
   if (!navigator.onLine || e104aUpdateNoticeShown || e104aDataCheckRunning) return;
   e104aDataCheckRunning = true;
-  // getAppData kiểm tra môn học, cấu hình, đề thi và các dữ liệu công khai;
-  // getOfflineBundle kiểm tra cả nội dung ngân hàng câu hỏi.
-  callServer('getAppData', [], function(appSnapshot) {
-    callServer('getOfflineBundle', [], function(questionSnapshot) {
-      const fingerprint = stableE104AString({
-        app: appSnapshot || {},
-        questions: questionSnapshot || {}
-      });
-      if (!e104aDataBaselineReady) {
-        e104aDataFingerprint = fingerprint;
-        e104aDataBaselineReady = true;
-      } else if (fingerprint !== e104aDataFingerprint) {
-        showE104AUpdateNotice('Dữ liệu môn học, câu hỏi, đề thi hoặc cấu hình đã thay đổi. Nhấn để tải lại dữ liệu mới nhất.');
-      }
+  // Đọc mã phiên bản dữ liệu dùng chung từ Apps Script.
+  // localStorage giúp phát hiện thay đổi kể cả khi máy vừa mở lại ứng dụng.
+  callServer('getDataRevision', [], function(revision) {
+    const currentRevision = String(revision == null ? '' : revision);
+    if (!currentRevision) {
       e104aDataCheckRunning = false;
-    }, function(error) {
-      console.warn('Không kiểm tra được thay đổi ngân hàng câu hỏi:', error);
-      e104aDataCheckRunning = false;
-    }, 30000);
+      return;
+    }
+    let previousRevision = '';
+    try { previousRevision = String(localStorage.getItem('E104A_DATA_REVISION') || ''); } catch (e) {}
+    if (!previousRevision) {
+      try { localStorage.setItem('E104A_DATA_REVISION', currentRevision); } catch (e) {}
+    } else if (previousRevision !== currentRevision) {
+      showE104AUpdateNotice('Dữ liệu môn học, câu hỏi, đề thi, cấu hình hoặc kết quả thi đã thay đổi. Nhấn để tải lại dữ liệu mới nhất.');
+    }
+    e104aDataCheckRunning = false;
   }, function(error) {
-    console.warn('Không kiểm tra được thay đổi dữ liệu ứng dụng:', error);
+    console.warn('Không kiểm tra được phiên bản dữ liệu:', error);
     e104aDataCheckRunning = false;
   }, 30000);
 }
