@@ -1796,7 +1796,7 @@ async function checkAppSourceUpdate() {
 function startAppVersionAutoCheck() {
   checkAppSourceUpdate();
   if (!window.e104aVersionCheckTimer) {
-    window.e104aVersionCheckTimer = setInterval(checkAppSourceUpdate, 30000);
+    window.e104aVersionCheckTimer = setInterval(checkAppSourceUpdate, 10000);
   }
 }
 window.addEventListener('online', checkAppSourceUpdate);
