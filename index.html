@@ -1805,6 +1805,7 @@ function checkAppDataChanges() {
       } else if (fingerprint !== e104aDataFingerprint) {
         showE104AUpdateNotice('Dữ liệu môn học, câu hỏi, đề thi hoặc cấu hình đã thay đổi. Nhấn để tải lại dữ liệu mới nhất.');
       }
+      e104aDataCheckRunning = false;
     }, function(error) {
       console.warn('Không kiểm tra được thay đổi ngân hàng câu hỏi:', error);
       e104aDataCheckRunning = false;
