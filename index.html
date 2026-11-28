@@ -1732,9 +1732,32 @@ function showSection(id) {
   window.scrollTo(0, 0);
 }
 
+/* KIỂM TRA PHIÊN BẢN MÃ NGUỒN TRÊN GITHUB PAGES */
+const E104A_BUILD_ID = '20261128-1545';
+async function checkAppSourceUpdate() {
+  const button = document.getElementById('updateAppButton');
+  if (!button || !navigator.onLine) return;
+  try {
+    const response = await fetch('./version.json?check=' + Date.now(), { cache: 'no-store' });
+    if (!response.ok) return;
+    const remote = await response.json();
+    if (remote && String(remote.buildId || '') && String(remote.buildId) !== E104A_BUILD_ID) {
+      button.textContent = '⚠ CÓ PHIÊN BẢN MỚI - NHẤN ĐỂ CẬP NHẬT';
+      button.style.background = '#f59e0b';
+      button.style.borderColor = '#d97706';
+      button.style.color = '#111827';
+      button.style.boxShadow = '0 0 0 3px rgba(245,158,11,.22)';
+      button.title = 'Đã phát hiện thay đổi mã nguồn. Nhấn để tải phiên bản mới nhất.';
+    }
+  } catch (error) {
+    console.warn('Không kiểm tra được phiên bản mới:', error);
+  }
+}
+
 /* KHỞI TẠO */
 
 document.addEventListener('DOMContentLoaded', function() {
+  checkAppSourceUpdate();
   loadApp();
   renderManualOptionInputs();
   const examSelect = document.getElementById('examSelect');
