@@ -238,20 +238,26 @@ button:disabled {
   text-align: center;
 }
 
-/* Lịch sử hoàn thành hiển thị dạng lưới 2 cột */
-.completed-history-grid {
+/* Lịch sử chia thành hai cột: bài đang làm dở và bài đã hoàn thành */
+.history-columns {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 18px;
   margin: 12px 0 22px;
+  text-align: left;
+  align-items: start;
 }
-.completed-history-grid .detail-row {
-  margin: 0;
+.history-column {
   min-width: 0;
-  overflow-wrap: anywhere;
+  padding: 14px;
+  border: 1px solid #dbe3ec;
+  border-radius: 10px;
+  background: #fff;
 }
-@media (max-width: 640px) {
-  .completed-history-grid { grid-template-columns: 1fr; }
+.history-column h4 { margin: 0 0 12px; color: var(--primary); }
+.history-column .detail-row { margin: 0 0 10px; min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 700px) {
+  .history-columns { grid-template-columns: 1fr; }
 }
 
 .quiz-top {
@@ -1749,7 +1755,7 @@ function showSection(id) {
 }
 
 /* KIỂM TRA PHIÊN BẢN MÃ NGUỒN TRÊN GITHUB PAGES */
-const E104A_BUILD_ID = '20261128-1625';
+const E104A_BUILD_ID = '20261128-1630';
 async function checkAppSourceUpdate() {
   const button = document.getElementById('updateAppButton');
   if (!button || !navigator.onLine) return;
@@ -2770,15 +2776,23 @@ async function showResult(data) {
 
 async function showHistory() {
   const box = $('historyBox');
-  box.innerHTML = '<h3>BÀI ĐANG LÀM DỞ VÀ LỊCH SỬ HOÀN THÀNH</h3><p>Đang tải dữ liệu...</p>';
+  box.innerHTML = '<h3>LỊCH SỬ THI CỦA TÔI</h3><p>Đang tải dữ liệu...</p>';
   let drafts = [];
   try { drafts = await getSavedDrafts(); } catch (e) { console.warn(e); }
-  box.innerHTML = '<h3>BÀI ĐANG LÀM DỞ VÀ LỊCH SỬ HOÀN THÀNH</h3>';
+  box.innerHTML = '<h3>LỊCH SỬ THI CỦA TÔI</h3>';
+  const historyColumns = document.createElement('div');
+  historyColumns.className = 'history-columns';
+  const draftColumn = document.createElement('section');
+  draftColumn.className = 'history-column';
+  const completedColumn = document.createElement('section');
+  completedColumn.className = 'history-column';
+  historyColumns.append(draftColumn, completedColumn);
+  box.appendChild(historyColumns);
 
   if (drafts.length) {
     const heading = document.createElement('h4');
     heading.textContent = 'BÀI ĐANG LÀM DỞ';
-    box.appendChild(heading);
+    draftColumn.appendChild(heading);
     drafts.forEach(d => {
       const div = document.createElement('div');
       div.className = 'detail-row';
@@ -2807,20 +2821,17 @@ async function showHistory() {
         showHistory();
       };
       div.append(title, info, resume, remove);
-      box.appendChild(div);
+      draftColumn.appendChild(div);
     });
   } else {
     const empty = document.createElement('p');
     empty.textContent = 'Không có bài làm nào đang lưu dở.';
-    box.appendChild(empty);
+    draftColumn.appendChild(empty);
   }
 
   const completedHeading = document.createElement('h4');
   completedHeading.textContent = 'CÁC LẦN ĐÃ HOÀN THÀNH (MỚI NHẤT XẾP TRƯỚC)';
-  box.appendChild(completedHeading);
-  const completedGrid = document.createElement('div');
-  completedGrid.className = 'completed-history-grid';
-  box.appendChild(completedGrid);
+  completedColumn.appendChild(completedHeading);
 
   // Gộp lịch sử trên thiết bị và máy chủ rồi sắp xếp chung theo thời gian.
   const completedItems = [];
@@ -2857,7 +2868,7 @@ async function showHistory() {
     if (!completedItems.length) {
       const empty = document.createElement('p');
       empty.textContent = 'Chưa có kết quả đã hoàn thành.';
-      box.appendChild(empty);
+      completedColumn.appendChild(empty);
       return;
     }
 
@@ -2884,7 +2895,7 @@ async function showHistory() {
         review.onclick = () => showResult(result);
         div.appendChild(review);
       }
-      completedGrid.appendChild(div);
+      completedColumn.appendChild(div);
     });
   }, function(error) {
     completedItems.sort((a,b) => timeValue(b.timestamp) - timeValue(a.timestamp));
@@ -2897,7 +2908,7 @@ async function showHistory() {
         ' | Điểm: ' + (result.score == null ? '' : result.score) +
         ' | Đúng: ' + (result.correct == null ? '' : result.correct) + '/' + (result.total == null ? '' : result.total) +
         ' | ' + (timeValue(item.savedAt) ? new Date(timeValue(item.savedAt)).toLocaleString('vi-VN') : 'Không rõ thời gian');
-      completedGrid.appendChild(div);
+      completedColumn.appendChild(div);
     });
     const msg = document.createElement('p');
     msg.textContent = 'Không tải được lịch sử từ máy chủ: ' + (error.message || 'Lỗi kết nối');
