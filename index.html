@@ -238,6 +238,22 @@ button:disabled {
   text-align: center;
 }
 
+/* Lịch sử hoàn thành hiển thị dạng lưới 2 cột */
+.completed-history-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 12px 0 22px;
+}
+.completed-history-grid .detail-row {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 640px) {
+  .completed-history-grid { grid-template-columns: 1fr; }
+}
+
 .quiz-top {
   display: flex;
   justify-content: space-between;
@@ -1269,7 +1285,7 @@ body {
         </div>
         <div id="homeMessage" class="message"></div>
         <div class="history">
-          <button class="secondary-button" onclick="showHistory()">Xem lịch sử thi của tôi</button>
+          <button class="secondary-button" onclick="showHistory()">BÀI ĐANG LÀM DỞ / LỊCH SỬ HOÀN THÀNH</button>
         </div>
         <div id="historyBox"></div>
       </section>
@@ -1733,7 +1749,7 @@ function showSection(id) {
 }
 
 /* KIỂM TRA PHIÊN BẢN MÃ NGUỒN TRÊN GITHUB PAGES */
-const E104A_BUILD_ID = '20261128-1545';
+const E104A_BUILD_ID = '20261128-1615';
 async function checkAppSourceUpdate() {
   const button = document.getElementById('updateAppButton');
   if (!button || !navigator.onLine) return;
@@ -2754,10 +2770,10 @@ async function showResult(data) {
 
 async function showHistory() {
   const box = $('historyBox');
-  box.innerHTML = '<h3>LỊCH SỬ VÀ BÀI ĐANG LÀM</h3><p>Đang tải dữ liệu...</p>';
+  box.innerHTML = '<h3>BÀI ĐANG LÀM DỞ VÀ LỊCH SỬ HOÀN THÀNH</h3><p>Đang tải dữ liệu...</p>';
   let drafts = [];
   try { drafts = await getSavedDrafts(); } catch (e) { console.warn(e); }
-  box.innerHTML = '<h3>LỊCH SỬ VÀ BÀI ĐANG LÀM</h3>';
+  box.innerHTML = '<h3>BÀI ĐANG LÀM DỞ VÀ LỊCH SỬ HOÀN THÀNH</h3>';
 
   if (drafts.length) {
     const heading = document.createElement('h4');
@@ -2802,6 +2818,9 @@ async function showHistory() {
   const completedHeading = document.createElement('h4');
   completedHeading.textContent = 'CÁC LẦN ĐÃ HOÀN THÀNH (MỚI NHẤT XẾP TRƯỚC)';
   box.appendChild(completedHeading);
+  const completedGrid = document.createElement('div');
+  completedGrid.className = 'completed-history-grid';
+  box.appendChild(completedGrid);
 
   // Gộp lịch sử trên thiết bị và máy chủ rồi sắp xếp chung theo thời gian.
   const completedItems = [];
@@ -2865,7 +2884,7 @@ async function showHistory() {
         review.onclick = () => showResult(result);
         div.appendChild(review);
       }
-      box.appendChild(div);
+      completedGrid.appendChild(div);
     });
   }, function(error) {
     completedItems.sort((a,b) => timeValue(b.timestamp) - timeValue(a.timestamp));
@@ -2878,7 +2897,7 @@ async function showHistory() {
         ' | Điểm: ' + (result.score == null ? '' : result.score) +
         ' | Đúng: ' + (result.correct == null ? '' : result.correct) + '/' + (result.total == null ? '' : result.total) +
         ' | ' + (timeValue(item.savedAt) ? new Date(timeValue(item.savedAt)).toLocaleString('vi-VN') : 'Không rõ thời gian');
-      box.appendChild(div);
+      completedGrid.appendChild(div);
     });
     const msg = document.createElement('p');
     msg.textContent = 'Không tải được lịch sử từ máy chủ: ' + (error.message || 'Lỗi kết nối');
