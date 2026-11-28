@@ -1257,7 +1257,7 @@ body {
     </nav>
 
     <div style="display:flex;justify-content:flex-end;margin:10px 0 14px;">
-      <button type="button" id="updateAppButton" class="secondary-button" onclick="updateAppVersion()" style="font-weight:800;border:1px solid #b99742;background:#fff8df;color:#654b0c;">↻ CẬP NHẬT PHIÊN BẢN MỚI</button>
+      <button type="button" id="updateAppButton" class="secondary-button" onclick="updateAppVersion()" style="font-weight:800;border:1px solid #0b5ed7;background:#0d6efd;color:#ffffff;">↻ CẬP NHẬT PHIÊN BẢN MỚI</button>
     </div>
 
     <div class="home-layout">
@@ -2139,7 +2139,7 @@ function renderSubjectCards(subjects) {
     download.type = 'button';
     download.className = 'subject-action download';
     download.textContent = 'TẢI TÀI LIỆU WORD';
-    download.style.cssText = 'grid-column:1/-1;background:#fff4d6;color:#704b00;border:1px solid #d8b45b;';
+    download.style.cssText = 'grid-column:1/-1;background:#fff4d6;color:#000000;border:1px solid #d8b45b;';
     download.addEventListener('click', () => downloadSubjectWord(subject.name, download));
     body.append(desc, count, practice, exam, download);
     card.append(top, body);
