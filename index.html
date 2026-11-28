@@ -1760,7 +1760,7 @@ function showSection(id) {
 }
 
 /* KIỂM TRA PHIÊN BẢN MÃ NGUỒN TRÊN GITHUB PAGES */
-const E104A_BUILD_ID = '20261128-1820';
+const E104A_BUILD_ID = '20261128-1830';
 let e104aVersionCheckRunning = false;
 let e104aUpdateNoticeShown = false;
 let e104aDataFingerprint = null;
@@ -1843,7 +1843,7 @@ function runE104AAutoUpdateChecks() {
 function startAppVersionAutoCheck() {
   runE104AAutoUpdateChecks();
   if (!window.e104aVersionCheckTimer) {
-    window.e104aVersionCheckTimer = setInterval(runE104AAutoUpdateChecks, 10000);
+    window.e104aVersionCheckTimer = setInterval(runE104AAutoUpdateChecks, 3000);
   }
 }
 window.addEventListener('online', runE104AAutoUpdateChecks);
